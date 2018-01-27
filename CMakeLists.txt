@@ -69,7 +69,7 @@ add_service_files(FILES
 ## Generate added messages and services with any dependencies listed here
 generate_messages(DEPENDENCIES
    					std_msgs
-					marvelmind_nav
+								marvelmind_nav
 )
 
 ################################################
@@ -101,7 +101,8 @@ generate_messages(DEPENDENCIES
 ## LIBRARIES: libraries you create in this project that dependent projects also need
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
-catkin_package( INCLUDE_DIRS include
+
+catkin_package( INCLUDE_DIRS #include			#így végre lefordult a gitről való lerántás után!!!
 					 LIBRARIES DroneNavigationPackage
 					 CATKIN_DEPENDS ardrone_autonomy marvelmind_nav roscpp rospy std_msgs message_runtime
 					 DEPENDS system_lib
