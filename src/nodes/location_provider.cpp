@@ -1,9 +1,20 @@
 #define NUMBER_OF_BEACONS              1
 #define QUEUE_SIZE_1				1000
+#define STARTUP_TIMEOUT               10
+
+#define MM_TOPICNAME                                    "/hedge_pos_a"
+#define SERVICENAME         "/LocationProvider/provide_hedge_location"
+
+#include <string.h>
+#include <stdio.h>
+#include <time.h>
+#include <boost/asio.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 #include "ros/ros.h"
 #include "marvelmind_nav/hedge_pos_a.h"
 #include "geometry_msgs/Point.h"
+#include "ros/master.h"
 #include "DroneNavigationPackage/HedgePositions.h"
 
 using namespace std;
@@ -46,8 +57,6 @@ bool provide_location(DroneNavigationPackage::HedgePositions::Request &req,
 }
 
 
-//mivel a marvelmind koordinata rendszere balkezes volt, az y koordinata -1-gyel történő beszorzasaval
-//csinaltunk belole jobbkezes koordinata-rendszert
 void locationReceivedCallback(const marvelmind_nav::hedge_pos_a::ConstPtr& msg)
 {
     if ( msg->flags == 2 )
@@ -72,17 +81,71 @@ void locationReceivedCallback(const marvelmind_nav::hedge_pos_a::ConstPtr& msg)
 }
 
 
+bool isTopicAvailable(const string& topic)
+{
+    ros::master::V_TopicInfo topic_infos;
+    ros::master::getTopics(topic_infos);
+
+    for (ros::master::V_TopicInfo::iterator it = topic_infos.begin() ; it != topic_infos.end(); it++) 
+    {
+        const ros::master::TopicInfo& info = *it;
+        if(info.name.compare(topic)==0)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+void startNode(ros::NodeHandle* n)
+{
+    time_t start, current;
+    start = time(NULL);
+    
+    do
+    {
+        if (isTopicAvailable(MM_TOPICNAME))
+        {
+            serviceProvider = n->advertiseService(SERVICENAME, provide_location);
+            locationReceiver = n->subscribe(MM_TOPICNAME, QUEUE_SIZE_1, locationReceivedCallback);
+
+            ROS_INFO("Service is ready to call ...");
+            ros::spin();
+            break;
+        }
+        current = time(NULL);
+    }while(difftime(current, start) < STARTUP_TIMEOUT);
+
+    ROS_ERROR("TIMEOUT: Node doesn't start because dependency topic does not exist!");
+}
+
 
 int main(int argc, char **argv)
 {
-  ros::init(argc, argv, "LocationProvider");
-  ros::NodeHandle n;
+    ros::init(argc, argv, "LocationProvider");
+    ros::NodeHandle n;
 
-  serviceProvider = n.advertiseService("/LocationProvider/provide_hedge_location", provide_location);
-  locationReceiver = n.subscribe("/hedge_pos_a", QUEUE_SIZE_1, locationReceivedCallback);
+    startNode(&n);
 
-  ROS_INFO("Service is ready to call ...");	
-  ros::spin();
+    /*boost::algorithm::split( lv_elems, topic_infos[0].name, boost::algorithm::is_any_of( lc_delim ) );
 
-  return 0;
+    int i=0;
+    for(; i<lv_elems.size(); i++)
+    {
+        printf("%s\n", lv_elems[0].c_str());
+    }
+
+    bond::Bond _bond("/hedge_pos_a", "55420");
+    _bond.start();
+
+    if (! _bond.waitUntilFormed(ros::Duration(5.0)))
+    {
+        ROS_ERROR("ERROR!");
+        return false;
+    }
+    else
+    {
+    }*/
+
+    return 0;
 }
