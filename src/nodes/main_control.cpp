@@ -186,8 +186,9 @@ void droneOperationCallback(const std_msgs::Int8::ConstPtr& msg)
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "ControlCenter");
-
 	ros::NodeHandle n;
+	
+	//if(ros::service::waitForService("/ardrone/flattrim", ros::Duration(10)) )
 	takeoffTopic = n.advertise<std_msgs::Empty>("/ardrone/takeoff", QUEUE_SIZE_1);
 	movementTopic = n.advertise<geometry_msgs::Twist>("/cmd_vel", QUEUE_SIZE_1);	
 	landTopic = n.advertise<std_msgs::Empty>("/ardrone/land", QUEUE_SIZE_1);	
@@ -200,7 +201,6 @@ int main(int argc, char **argv)
 	positionUpdater = n.serviceClient<DroneNavigationPackage::HedgePositions>("/LocationProvider/provide_hedge_location");
 	ros::Rate loop_rate(LOOP_RATE);	
 
-
 	system("rosservice call /ardrone/flattrim");
 	ros::Duration(1).sleep();	
 	ROS_INFO("Node started ...");	
@@ -210,83 +210,6 @@ int main(int argc, char **argv)
 	running = false;
 	currentState = START;
 	ros::spin();
-
+	
 	return 0;
 }
-
-
-/*void helperFunction()
-{
-
-	geometry_msgs::Point A;
-	A.x = 1.5;
-	A.y = -1.25;
-	geometry_msgs::Point B;
-	B.x = 1.25;
-	B.y = -0.5;
-
-	double tan2 = atan2((A.y - B.y),(A.x - B.x));
-
-	ROS_INFO("A(%f, %f)\nB(%f,%f)\nAngle: %.4f\n", A.x, A.y, B.x, B.y, radToDegree(tan2));
-
-	A.x = 2.25;
-	A.y = -0.5;
-	B.x = 2.5;
-	B.y = -1.5;
-
-	tan2 = atan2((A.y - B.y),(A.x - B.x));
-	
-	ROS_INFO("A(%f, %f)\nB(%f,%f)\nAngle: %.4f\n", A.x, A.y, B.x, B.y, radToDegree(tan2));
-
-	//------------------------------------------------------------
-	A.x = -1.25;
-	A.y = -0.75;
-	B.x = -0.25;
-	B.y = -0.5;
-
-	tan2 = atan2((A.y - B.y),(A.x - B.x));
-	
-	ROS_INFO("A(%f, %f)\nB(%f,%f)\nAngle: %.4f\n", A.x, A.y, B.x, B.y, radToDegree(tan2));
-
-	//------------------------------------------------------------
-	A.x = 0.5;
-	A.y = 0.25;
-	B.x = 0.75;
-	B.y = 1;
-
-	tan2 = atan2((A.y - B.y),(A.x - B.x));
-	
-	ROS_INFO("A(%f, %f)\nB(%f,%f)\nAngle: %.4f\n", A.x, A.y, B.x, B.y, radToDegree(tan2));
-
-	//------------------------------------------------------------
-	A.x = 2.75;
-	A.y = 1;
-	B.x = 1.75;
-	B.y = 1;
-
-	tan2 = atan2((A.y - B.y),(A.x - B.x));
-	
-	ROS_INFO("A(%f, %f)\nB(%f,%f)\nAngle: %.4f\n", A.x, A.y, B.x, B.y, radToDegree(tan2));
-
-	//------------------------------------------------------------
-	A.x = -1.75;
-	A.y = 1;
-	B.x = -0.75;
-	B.y = 1;
-
-	tan2 = atan2((A.y - B.y),(A.x - B.x));
-	
-	ROS_INFO("A(%f, %f)\nB(%f,%f)\nAngle: %.4f\n", A.x, A.y, B.x, B.y, radToDegree(tan2));
-
-	//------------------------------------------------------------
-	A.x = -2.5;
-	A.y = 1;
-	B.x = -2.5;
-	B.y = 0;
-
-	tan2 = atan2((A.y - B.y),(A.x - B.x));
-	
-	ROS_INFO("A(%f, %f)\nB(%f,%f)\nAngle: %.4f\n", A.x, A.y, B.x, B.y, radToDegree(tan2));
-
-	//------------------------------------------------------------
-}*/

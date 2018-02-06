@@ -24,5 +24,10 @@ double radToDegree(double angleInRad)
 	return (angleInRad * (180.0/M_PI));
 }
 
+double degreeToRad(double angleInDegree)
+{
+	return (angleInDegree * (M_PI/180.0));
+}
+
 /* Your function statement here */
 #endif

@@ -14,11 +14,11 @@ find_package(catkin REQUIRED COMPONENTS
 					  rospy
 					  std_msgs
 					  message_generation
-					  bondcpp
+					  tf
 )
 
 ## System dependencies are found with CMake's conventions
-find_package(Boost REQUIRED COMPONENTS system)
+# find_package(Boost REQUIRED COMPONENTS system)
 
 
 ## Uncomment this if the package has a setup.py. This macro ensures
@@ -53,6 +53,7 @@ find_package(Boost REQUIRED COMPONENTS system)
 ## Generate messages in the 'msg' folder
 add_message_files(FILES
    					Intervention.msg
+					TransformParameters.msg
  )
 
 ## Generate services in the 'srv' folder
@@ -105,7 +106,7 @@ generate_messages(DEPENDENCIES
 
 catkin_package( INCLUDE_DIRS #include			#így végre lefordult a gitről való lerántás után!!!
 					 LIBRARIES DroneNavigationPackage
-					 CATKIN_DEPENDS ardrone_autonomy marvelmind_nav roscpp rospy std_msgs message_runtime
+					 CATKIN_DEPENDS ardrone_autonomy marvelmind_nav roscpp rospy std_msgs message_runtime tf
 					 DEPENDS system_lib
 )
 
@@ -126,6 +127,12 @@ add_dependencies(ControlCenter DroneNavigationPackage_generate_messages_cpp)
 add_executable(LocationProvider src/nodes/location_provider.cpp)
 target_link_libraries(LocationProvider ${catkin_LIBRARIES})
 add_dependencies(LocationProvider DroneNavigationPackage_generate_messages_cpp)
+
+add_executable(w2d_tf_broadcaster src/nodes/w2d_tf_broadcaster.cpp)
+target_link_libraries(w2d_tf_broadcaster ${catkin_LIBRARIES})
+
+add_executable(DUMMY_listener src/nodes/DUMMY_listener.cpp)
+target_link_libraries(DUMMY_listener ${catkin_LIBRARIES})
 
 
 ## Declare a C++ library
