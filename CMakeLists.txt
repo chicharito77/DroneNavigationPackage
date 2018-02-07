@@ -131,8 +131,8 @@ add_dependencies(LocationProvider DroneNavigationPackage_generate_messages_cpp)
 add_executable(w2d_tf_broadcaster src/nodes/w2d_tf_broadcaster.cpp)
 target_link_libraries(w2d_tf_broadcaster ${catkin_LIBRARIES})
 
-add_executable(DUMMY_listener src/nodes/DUMMY_listener.cpp)
-target_link_libraries(DUMMY_listener ${catkin_LIBRARIES})
+# add_executable(DUMMY_listener src/nodes/DUMMY_listener.cpp)
+# target_link_libraries(DUMMY_listener ${catkin_LIBRARIES})
 
 
 ## Declare a C++ library

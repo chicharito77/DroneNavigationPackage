@@ -91,7 +91,7 @@ namespace StateActions
         }
     }
 
-    void TurnLeft_actions(tf::Quaternion quat, int *counter, geometry_msgs::Point *currentPos)
+    void TurnLeft_actions(tf::Quaternion quat, int *counter)
     {
         //yaw_prev = (*counter == 0) ? yaw_starting : yaw_current;
         //*counter++;	        
@@ -129,7 +129,7 @@ namespace StateActions
         yaw_prev = yaw_current;
     }
     
-    void TurnRight_actions(tf::Quaternion quat, int *counter, geometry_msgs::Point *currentPos)
+    void TurnRight_actions(tf::Quaternion quat, int *counter)
     {
         //yaw_prev = (*counter == 0) ? yaw_starting : yaw_current;
         //*counter++;        

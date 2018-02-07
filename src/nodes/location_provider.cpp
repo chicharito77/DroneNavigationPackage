@@ -97,7 +97,7 @@ bool isTopicAvailable(const string& topic)
     return false;
 }
 
-void startNode(ros::NodeHandle* n)
+void startNode(ros::NodeHandle* node)
 {
     time_t start, current;
     start = time(NULL);
@@ -106,8 +106,8 @@ void startNode(ros::NodeHandle* n)
     {
         if (isTopicAvailable(MM_TOPICNAME))
         {
-            serviceProvider = n->advertiseService(SERVICENAME, provide_location);
-            locationReceiver = n->subscribe(MM_TOPICNAME, QUEUE_SIZE_1, locationReceivedCallback);
+            serviceProvider = node->advertiseService(SERVICENAME, provide_location);
+            locationReceiver = node->subscribe(MM_TOPICNAME, QUEUE_SIZE_1, locationReceivedCallback);
 
             ROS_INFO("Service is ready to call ...");
             ros::spin();
@@ -126,26 +126,6 @@ int main(int argc, char **argv)
     ros::NodeHandle n;
 
     startNode(&n);
-
-    /*boost::algorithm::split( lv_elems, topic_infos[0].name, boost::algorithm::is_any_of( lc_delim ) );
-
-    int i=0;
-    for(; i<lv_elems.size(); i++)
-    {
-        printf("%s\n", lv_elems[0].c_str());
-    }
-
-    bond::Bond _bond("/hedge_pos_a", "55420");
-    _bond.start();
-
-    if (! _bond.waitUntilFormed(ros::Duration(5.0)))
-    {
-        ROS_ERROR("ERROR!");
-        return false;
-    }
-    else
-    {
-    }*/
 
     return 0;
 }

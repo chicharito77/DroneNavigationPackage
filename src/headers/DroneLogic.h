@@ -2,6 +2,9 @@
 #define DRONELOGIC_H_INCLUDE
 
 #include "ros/ros.h"
+#include <geometry_msgs/PointStamped.h>
+#include <tf/transform_listener.h>
+#include <iostream>
 
 #include "StateMachine.h"
 
@@ -17,13 +20,47 @@ namespace DroneLogic
     int inTurningStateCounter = 0;
 
     double droneOrientationInRad;
+    double dcsOrientationInRad;
     double turningAngleInRad, dist, theta, x_distance, y_distance;
 
-    double droneOrientationByLocalData;
-    geometry_msgs::Point destinationCoordinateInDroneCoordinateSystem;
+
+    geometry_msgs::Point targetCoordinate; //in DCS
 
 
-    void calculateOrientationOfDrone()
+    bool transformPoint(geometry_msgs::Point *destination, geometry_msgs::Point *destinationInDCS)
+    {
+        const tf::TransformListener tfListener(ros::Duration(10));
+
+        geometry_msgs::PointStamped laser_point;
+        laser_point.header.frame_id = "{W}";
+        laser_point.header.stamp = ros::Time();
+
+        laser_point.point.x = destination->x;
+        laser_point.point.y = destination->y;
+        laser_point.point.z = destination->z;
+
+        try{
+            geometry_msgs::PointStamped base_point;
+            tfListener.transformPoint("{D}", laser_point, base_point);
+
+            ROS_INFO("{W}: (%.2f, %.2f. %.2f) -----> {D}: (%.2f, %.2f, %.2f) at time %.2f",
+                laser_point.point.x, laser_point.point.y, laser_point.point.z,
+                base_point.point.x, base_point.point.y, base_point.point.z, base_point.header.stamp.toSec());
+
+            destinationInDCS->x = base_point.point.x;
+            destinationInDCS->y = base_point.point.y;
+            destinationInDCS->z = base_point.point.z;
+        }
+        catch(tf::TransformException& ex)
+        {
+            ROS_ERROR("Received an exception trying to transform a point from \"base_laser\" to \"base_link\": %s", ex.what());
+            return false;
+        }
+
+        return true;
+    }
+
+    void calculateOrientationOfDrone(geometry_msgs::Point *offset, ros::Publisher *w2dTopic)
     {
         int inCalculationStateCounter = 0;
         coordinateSystemSynchSrvMsg.request.addresses[0] = DRONE_HEDGE_ADDRESS;
@@ -39,9 +76,9 @@ namespace DroneLogic
         A.x = coordinateSystemSynchSrvMsg.response.positions[0].x_m;
         A.y = coordinateSystemSynchSrvMsg.response.positions[0].y_m;
         ROS_INFO("\tPoint A measured! (%f, %f)", A.x, A.y);
+
         coordinateSystemSynchSrvMsg.response.positions[0].x_m = 0.0;
         coordinateSystemSynchSrvMsg.response.positions[0].y_m = 0.0;			
-
         movementTopic.publish(calibrationMsg);
         ros::Duration(1).sleep();
         movementTopic.publish(hoveringMsg);
@@ -61,7 +98,18 @@ namespace DroneLogic
         ROS_INFO("\tPoint B measured! (%f, %f)", B.x, B.y);	
         
         droneOrientationInRad = atan2( (A.y - B.y), (A.x - B.x) );
+        dcsOrientationInRad = droneOrientationInRad - degreeToRad(90.0);
+
+        //meghívni a megfelelő topikot
+        DroneNavigationPackage::TransformParameters params;
+        params.X_w = offset->x;
+        params.Y_w = offset->y;
+        params.Z_w = 0.0;
+        params.theta_dx_rad = dcsOrientationInRad;
+
+        w2dTopic->publish(params);
         ROS_INFO("Orientation of {D} coordinate frame's y axis in {W}: %f degrees\n\n", radToDegree(droneOrientationInRad));
+        ROS_INFO("w2d transform set with (%.2f, %.2f) offset and %.4f degree rotation!\n\n", offset->x, offset->y, radToDegree(dcsOrientationInRad));
         ros::Duration(2).sleep();
     }
 
@@ -75,10 +123,6 @@ namespace DroneLogic
         destinationCoordinate.y = -1.755;
         destinationCoordinate.z = 1.0;
 
-        destinationCoordinateInDroneCoordinateSystem.x = 0.0;
-        destinationCoordinateInDroneCoordinateSystem.y = 0.0;
-        destinationCoordinateInDroneCoordinateSystem.z = 0.0;
-
         if ( positionUpdater.call(calculateDroneRouteSrvMsg) )
         {
             droneCoordinate.x = calculateDroneRouteSrvMsg.response.positions[0].x_m;
@@ -88,9 +132,12 @@ namespace DroneLogic
             theta = atan2( (destinationCoordinate.y - droneCoordinate.y), (destinationCoordinate.x - droneCoordinate.x) );
             turningAngleInRad = theta - droneOrientationInRad;
 
-            destinationCoordinateInDroneCoordinateSystem.x = positionInDroneCoordinateSystem.x;
-            destinationCoordinateInDroneCoordinateSystem.y = (positionInDroneCoordinateSystem.y + dist);
-            destinationCoordinateInDroneCoordinateSystem.z = positionInDroneCoordinateSystem.z;
+
+            transformPoint(&destinationCoordinate, &targetCoordinate);
+    //TODO: ide jön az új kód!!!!
+            //destinationCoordinateInDroneCoordinateSystem.x = positionInDroneCoordinateSystem.x;
+            //destinationCoordinateInDroneCoordinateSystem.y = (positionInDroneCoordinateSystem.y + dist);
+            //destinationCoordinateInDroneCoordinateSystem.z = positionInDroneCoordinateSystem.z;
 
             ROS_INFO("\nDrone in {W}: (%.4f, %.4f)\nDestination in {W}: (%.4f, %.4f)\nDistance: %.4f m\nTheta = %f degrees\nTurning angle: %f degrees\n", 
                             droneCoordinate.x, droneCoordinate.y, destinationCoordinate.x, destinationCoordinate.y,
@@ -98,10 +145,9 @@ namespace DroneLogic
 
             ROS_INFO("\nDrone in {D}: (%.4f, %.4f)\nDestination in {D}: (%.4f, %.4f)\n", 
                                 positionInDroneCoordinateSystem.x, positionInDroneCoordinateSystem.y, 
-                                destinationCoordinateInDroneCoordinateSystem.x, destinationCoordinateInDroneCoordinateSystem.y);       
+                                targetCoordinate.x, targetCoordinate.y);       
 
-            //setMovementValues(&droneOrientationInRad, &theta, &dist, &destinationCoordinateInDroneCoordinateSystem);
-            setMovementValues(&droneOrientationInRad, &theta, &dist, &destinationCoordinate);
+            setMovementValues(&droneOrientationInRad, &theta, &dist, &targetCoordinate);
             return true;
         }
         
@@ -159,9 +205,11 @@ namespace DroneLogic
             position.y = coordinateSystemSynchSrvMsg.response.positions[0].y_m;
             position.z = 1.0;
 
-            droneCoordinate = position;
+            //        droneCoordinate = position;
         }
         //hiba lekezelése
+
+        return position;
     }
 }
 

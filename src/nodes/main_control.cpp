@@ -8,6 +8,7 @@
 #include "nav_msgs/Odometry.h"
 #include "geometry_msgs/Point.h"
 #include "DroneNavigationPackage/Intervention.h"
+#include "DroneNavigationPackage/TransformParameters.h"
 #include "DroneNavigationPackage/HedgePositions.h"
 
 #include "../headers/DroneLogic.h"
@@ -16,6 +17,7 @@ using namespace StateActions;
 
 ros::Publisher takeoffTopic;
 ros::Publisher landTopic;
+ros::Publisher w2dTopic;
 ros::Subscriber operationTopic;
 ros::Subscriber externalIntervention;
 ros::Subscriber setTargetTopic;
@@ -29,12 +31,10 @@ bool calibrationDone;
 bool calculationDone;
 bool targetReached;
 
+geometry_msgs::Point positionBeforeTakeoff;
 geometry_msgs::Point currentPosition;
 geometry_msgs::Point currentPosInDCS;
 int moveToTargetCounter = 0;
-
-
-
 
 
 void odometryCallback(const nav_msgs::Odometry::ConstPtr& msg)
@@ -59,9 +59,9 @@ void odometryCallback(const nav_msgs::Odometry::ConstPtr& msg)
 
 		case MOVE_TO_TARGET:
 			// lekérni a hedge pozícióját
-			DroneLogic::getPositionOfDrone();
+			//DroneLogic::getPositionOfDrone();
 			//MoveToTarget_actions(&currentPosInDCS, &moveToTargetCounter);
-			MoveToTarget_actions(&DroneLogic::droneCoordinate, &moveToTargetCounter);
+			MoveToTarget_actions(&currentPosInDCS, &moveToTargetCounter);
 			
 		break;
 
@@ -71,12 +71,12 @@ void odometryCallback(const nav_msgs::Odometry::ConstPtr& msg)
 		break;
 
 		case TURN_RIGHT:		//negatív radián érték mindvégig
-			TurnRight_actions(quat, &DroneLogic::inTurningStateCounter, &currentPosInDCS);
+			TurnRight_actions(quat, &DroneLogic::inTurningStateCounter);
 		
 		break;
 
 		case TURN_LEFT:
-			TurnLeft_actions(quat, &DroneLogic::inTurningStateCounter, &currentPosInDCS);
+			TurnLeft_actions(quat, &DroneLogic::inTurningStateCounter);
 
 		break;
 
@@ -98,7 +98,10 @@ void interventionCallback(const DroneNavigationPackage::Intervention::ConstPtr& 
 {
 	if (running == false && msg->READY_TO_START == true)
 	{
-		//helperFunction();
+		positionBeforeTakeoff = DroneLogic::getPositionOfDrone();
+        ros::Duration(3).sleep();
+		ROS_INFO("Initialization point in {W}: (%.2f, %.2f)\n", positionBeforeTakeoff.x, positionBeforeTakeoff.y);
+
 		takeoffTopic.publish( takeoffMsg );
 		running = true;
 		calibrationDone = false;
@@ -137,7 +140,7 @@ void droneOperationCallback(const std_msgs::Int8::ConstPtr& msg)
 		switch (msg->data)
 		{
 			case 1:		//calibration
-				DroneLogic::calculateOrientationOfDrone();
+				DroneLogic::calculateOrientationOfDrone(&positionBeforeTakeoff, &w2dTopic);
 				calibrationDone = true;
 				calculationDone = false;
 			break;
@@ -191,7 +194,8 @@ int main(int argc, char **argv)
 	//if(ros::service::waitForService("/ardrone/flattrim", ros::Duration(10)) )
 	takeoffTopic = n.advertise<std_msgs::Empty>("/ardrone/takeoff", QUEUE_SIZE_1);
 	movementTopic = n.advertise<geometry_msgs::Twist>("/cmd_vel", QUEUE_SIZE_1);	
-	landTopic = n.advertise<std_msgs::Empty>("/ardrone/land", QUEUE_SIZE_1);	
+	landTopic = n.advertise<std_msgs::Empty>("/ardrone/land", QUEUE_SIZE_1);
+	w2dTopic = n.advertise<DroneNavigationPackage::TransformParameters>("/ControlCenter/set_transform_parameters", QUEUE_SIZE_2);	
 	
 	operationTopic = n.subscribe("/ControlCenter/drone_operations", QUEUE_SIZE_2, droneOperationCallback);
 	externalIntervention = n.subscribe("/ControlCenter/external_intervention", QUEUE_SIZE_2, interventionCallback);
