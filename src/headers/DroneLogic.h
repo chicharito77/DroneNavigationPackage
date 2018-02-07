@@ -29,19 +29,23 @@ namespace DroneLogic
 
     bool transformPoint(geometry_msgs::Point *destination, geometry_msgs::Point *destinationInDCS)
     {
-        const tf::TransformListener tfListener(ros::Duration(10));
+        tf::TransformListener listener(ros::Duration(10));
 
         geometry_msgs::PointStamped laser_point;
-        laser_point.header.frame_id = "{W}";
+        laser_point.header.frame_id = "/{W}";
         laser_point.header.stamp = ros::Time();
-
         laser_point.point.x = destination->x;
         laser_point.point.y = destination->y;
         laser_point.point.z = destination->z;
 
         try{
             geometry_msgs::PointStamped base_point;
-            tfListener.transformPoint("{D}", laser_point, base_point);
+            base_point.point.x = 0;
+            base_point.point.y = 0;
+            base_point.point.z = 0;
+
+            listener.waitForTransform("/odom", "/{W}", ros::Time(0), ros::Duration(1.0) );
+            listener.transformPoint("/odom", laser_point, base_point);
 
             ROS_INFO("{W}: (%.2f, %.2f. %.2f) -----> {D}: (%.2f, %.2f, %.2f) at time %.2f",
                 laser_point.point.x, laser_point.point.y, laser_point.point.z,
@@ -119,8 +123,8 @@ namespace DroneLogic
     {   
         calculateDroneRouteSrvMsg.request.addresses[0] = DRONE_HEDGE_ADDRESS;
 
-        destinationCoordinate.x = 4.8;
-        destinationCoordinate.y = -1.755;
+        destinationCoordinate.x = 4.9;
+        destinationCoordinate.y = 2.68;
         destinationCoordinate.z = 1.0;
 
         if ( positionUpdater.call(calculateDroneRouteSrvMsg) )

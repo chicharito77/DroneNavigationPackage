@@ -34,7 +34,7 @@ int main(int argc, char** argv)
 {
     ros::init(argc, argv, "w2d_tf_broadcaster");
     ros::NodeHandle node;
-    ros::Rate r(1000);
+    ros::Rate r(15);//1000
     tf::TransformBroadcaster broadcaster;
 
     initialize(&node);  
@@ -45,7 +45,7 @@ int main(int argc, char** argv)
             
             tf::StampedTransform(
                             tf::Transform(rotationQuaternion, tf::Vector3(X_w, Y_w, Z_w)),
-                            ros::Time::now(),"{W}", "{D}"));
+                            ros::Time::now(),"{W}", "odom"));
                                             //parent, child
         ros::spinOnce();
         r.sleep();

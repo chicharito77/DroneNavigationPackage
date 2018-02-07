@@ -58,9 +58,6 @@ void odometryCallback(const nav_msgs::Odometry::ConstPtr& msg)
 		break;
 
 		case MOVE_TO_TARGET:
-			// lekérni a hedge pozícióját
-			//DroneLogic::getPositionOfDrone();
-			//MoveToTarget_actions(&currentPosInDCS, &moveToTargetCounter);
 			MoveToTarget_actions(&currentPosInDCS, &moveToTargetCounter);
 			
 		break;
@@ -175,11 +172,11 @@ void droneOperationCallback(const std_msgs::Int8::ConstPtr& msg)
 	
 			break;
 
-			case 4:
+			/*case 4:
 				movementTopic.publish( liftingMsg );
 				ros::Duration(3).sleep();
 				movementTopic.publish( hoveringMsg );
-			break;
+			break;*/
 
 		}
 	}

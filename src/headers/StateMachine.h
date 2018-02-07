@@ -123,7 +123,7 @@ namespace StateActions
         else
         {
             movementTopic.publish(turnMsg_2);
-            ROS_INFO("\tcurrent: %f", yaw_current);
+            //ROS_INFO("\tcurrent: %f", yaw_current);
         }
 
         yaw_prev = yaw_current;
@@ -161,7 +161,7 @@ namespace StateActions
         else
         {
             movementTopic.publish(turnMsg);
-            ROS_INFO("\tcurrent: %f", yaw_current);
+            //ROS_INFO("\tcurrent: %f", yaw_current);
         }
 
         yaw_prev = yaw_current;
