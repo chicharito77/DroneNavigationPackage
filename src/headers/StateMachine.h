@@ -63,8 +63,8 @@ namespace StateActions
         hoveringMsg.angular.z = 0.0;
         liftingMsg.linear.z = 0.2;
 
-        turnMsg.angular.z = -0.15;
-        turnMsg_2.angular.z = 0.15;
+        turnMsg.angular.z = -0.1;
+        turnMsg_2.angular.z = 0.1;
         calibrationMsg.linear.x = -0.1;    
         moveForwardMsg.linear.x = 0.08;
     }
