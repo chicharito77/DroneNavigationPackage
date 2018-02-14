@@ -19,6 +19,12 @@ bool isDroneInRadius(geometry_msgs::Point *dronePosition, geometry_msgs::Point *
 	return false;
 }
 
+double distanceFromTargetInCm(geometry_msgs::Point *dronePosition, geometry_msgs::Point *destPosition)
+{
+	double distanceInMeter = sqrt(pow(dronePosition->x - destPosition->x, 2) + pow(dronePosition->y - destPosition->y, 2));
+	return (distanceInMeter*100.0);
+}
+
 double radToDegree(double angleInRad)
 {
 	return (angleInRad * (180.0/M_PI));

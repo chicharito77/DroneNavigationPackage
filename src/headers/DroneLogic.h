@@ -4,6 +4,8 @@
 #define WORLD_TF_ID                    "/W"
 #define ODOM_TF_ID                     "/odom"
 #define BASE_LINK_TF_ID                "/ardrone_base_link"
+#define BASE_FRONTCAM_TF_ID            "/ardrone_base_frontcam"
+#define BASE_BOTTOMCAM_TF_ID           "/ardrone_base_bottomcam"
 
 #include "ros/ros.h"
 #include <geometry_msgs/PointStamped.h>
@@ -22,7 +24,6 @@ namespace DroneLogic
     geometry_msgs::Point A, B;                                                                  //variables for the calculation phase
     geometry_msgs::Point droneCoordinate, destinationCoordinate;
 
-    int numberOfMeasurements = 0;
     int inTurningStateCounter = 0;
 
     double droneOrientationInRad;
@@ -30,7 +31,7 @@ namespace DroneLogic
     double turningAngleInRad, dist, theta, x_distance, y_distance;
 
 
-    geometry_msgs::Point targetCoordinate; //in DCS
+    geometry_msgs::Point targetCoordinate, dummy_2, dummy_3, dummy_4; //in DCS
 
     bool transformPoint(geometry_msgs::Point *destination, geometry_msgs::Point *destinationInDCS, const std::string& targetFrame, const std::string& baseFrame="/W")
     {
@@ -54,14 +55,14 @@ namespace DroneLogic
             listener.waitForTransform(targetFrame, baseFrame, ros::Time(0), ros::Duration(1.0) );
             listener.transformPoint(targetFrame, baseCoordinate, transformedCoordinate);
 
-            ROS_INFO("%s -> %s transform successfull:\n\t(%.2f, %.2f. %.2f) -> (%.2f, %.2f, %.2f) at time %.2f", 
+            ROS_INFO("%s -> %s transform successfull:\n\t(%.2f, %.2f. %.2f) -> (%.2f, %.2f, %.2f) at time %.2f\n", 
                 baseFrame.c_str(), targetFrame.c_str(), baseCoordinate.point.x, baseCoordinate.point.y, baseCoordinate.point.z,
                 transformedCoordinate.point.x, transformedCoordinate.point.y, transformedCoordinate.point.z, transformedCoordinate.header.stamp.toSec());
 
-            //destinationInDCS->x = base_point.point.x;
-            //destinationInDCS->y = base_point.point.y;
-            destinationInDCS->x = transformedCoordinate.point.y;
-            destinationInDCS->y = transformedCoordinate.point.x;
+            //destinationInDCS->x = transformedCoordinate.point.y;      //with W->base_link transform
+            //destinationInDCS->y = transformedCoordinate.point.x;
+            destinationInDCS->x = transformedCoordinate.point.x;
+            destinationInDCS->y = transformedCoordinate.point.y;
             destinationInDCS->z = transformedCoordinate.point.z;
         }
         catch(tf::TransformException& ex)
@@ -121,7 +122,7 @@ namespace DroneLogic
         params.theta_dx_rad = dcsOrientationInRad;
 
         w2dTopic->publish(params);
-        ROS_INFO("Orientation of {D} coordinate frame's y axis in {W}: %f degrees\n\n", radToDegree(droneOrientationInRad));
+        ROS_INFO("Orientation of {D} coordinate frame's y axis in {W}: %f degrees", radToDegree(droneOrientationInRad));
         ROS_INFO("w2d transform set with (%.2f, %.2f) offset and %.4f degree rotation!\n\n", offset->x, offset->y, radToDegree(dcsOrientationInRad));
         ros::Duration(2).sleep();
     }
@@ -147,14 +148,17 @@ namespace DroneLogic
             theta = atan2( (destinationCoordinate.y - droneCoordinate.y), (destinationCoordinate.x - droneCoordinate.x) );
             turningAngleInRad = theta - droneOrientationInRad;
 
-            transformPoint(&destinationCoordinate, &targetCoordinate, BASE_LINK_TF_ID);
+            //transformPoint(&destinationCoordinate, &targetCoordinate, BASE_LINK_TF_ID);
+            transformPoint(&destinationCoordinate, &targetCoordinate, BASE_BOTTOMCAM_TF_ID);
+            //    transformPoint(&destinationCoordinate, &dummy_2, ODOM_TF_ID);
+            //    transformPoint(&destinationCoordinate, &dummy_3, BASE_LINK_TF_ID);
+            //    transformPoint(&destinationCoordinate, &dummy_4, BASE_FRONTCAM_TF_ID);
 
-            ROS_INFO("\nDrone in {W}: (%.4f, %.4f)\nDestination in {W}: (%.4f, %.4f)\nDistance: %.4f m\nTheta = %f degrees\nTurning angle: %f degrees\n", 
+            ROS_INFO("\n\tDrone in {W}: (%.4f, %.4f)\n\tDestination in {W}: (%.4f, %.4f)\n\tDistance: %.4f m\n\tTheta = %f degrees\n\tTurning angle: %f degrees\n", 
                             droneCoordinate.x, droneCoordinate.y, destinationCoordinate.x, destinationCoordinate.y,
                             dist, radToDegree(theta), radToDegree(turningAngleInRad));
 
-
-            ROS_INFO("\nDrone in {D}: (%.4f, %.4f)\nDestination in {D}: (%.4f, %.4f)\n", 
+            ROS_INFO("\n\tDrone in {D}: (%.4f, %.4f)\n\tDestination in {D}: (%.4f, %.4f)\n", 
                                 positionInDroneCoordinateSystem.x, positionInDroneCoordinateSystem.y, 
                                 targetCoordinate.x, targetCoordinate.y);
 
@@ -180,7 +184,7 @@ namespace DroneLogic
         if (turningAngleInRad >= 0)				//must turn left
         {
             currentState = TURN_LEFT;
-            ROS_INFO("%d. goal := %f", numberOfMeasurements++, yaw_goal);
+            ROS_INFO("Goal := %f", yaw_goal);
 
             if (yaw_goal > M_PI)
             {
@@ -193,7 +197,7 @@ namespace DroneLogic
         else								//must turn right
         {
             currentState = TURN_RIGHT;									//dummy value 
-            ROS_INFO("%d. goal := %f", numberOfMeasurements++, yaw_goal);
+            ROS_INFO("Goal := %f", yaw_goal);
 
             if (yaw_goal < -M_PI)
             {

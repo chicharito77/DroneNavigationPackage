@@ -51,14 +51,14 @@ void odometryCallback(const nav_msgs::Odometry::ConstPtr& msg)
 
 		break;
 
-
+//moveToTarget eltávolitva a hoveringactinonsból meg a movetotargetból
 		case HOVERING:
-			Hovering_actions(quat, &currentPosInDCS, &moveToTargetCounter);
+			Hovering_actions(quat, &currentPosInDCS);
 
 		break;
 
 		case MOVE_TO_TARGET:
-			MoveToTarget_actions(&currentPosInDCS, &moveToTargetCounter);
+			MoveToTarget_actions(&currentPosInDCS);
 			
 		break;
 

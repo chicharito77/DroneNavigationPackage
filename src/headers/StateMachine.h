@@ -10,7 +10,7 @@
 
 #define DRONE_HEDGE_ADDRESS					  12
 
-#define MODULO                               200
+#define MODULO                                 5
 
 #include "geometry_msgs/Point.h"
 #include "ros/ros.h"
@@ -42,6 +42,10 @@ namespace StateActions
     bool inTestState = false;
     double ThetaZero, Theta, Distance;
 
+    ros::Time start, finish;
+
+    int moveCtr;
+
     void setMovementValues(double *theta_zero, double *theta, double *distance, geometry_msgs::Point *_destinationCoordinate)
     {
         ThetaZero = *theta_zero;
@@ -50,6 +54,8 @@ namespace StateActions
         destinationCoordinate.x = _destinationCoordinate->x;
         destinationCoordinate.y = _destinationCoordinate->y;
         destinationCoordinate.z = _destinationCoordinate->z;
+
+        moveCtr = 0;
     }
 
 
@@ -64,7 +70,7 @@ namespace StateActions
         liftingMsg.linear.z = 0.2;
 
         turnMsg.angular.z = -0.1;
-        turnMsg_2.angular.z = 0.1;
+        turnMsg_2.angular.z = 0.2;
         calibrationMsg.linear.x = -0.1;    
         moveForwardMsg.linear.x = 0.08;
     }
@@ -76,18 +82,18 @@ namespace StateActions
         movementTopic.publish(hoveringMsg);
     }
 
-    void Hovering_actions(tf::Quaternion quat, geometry_msgs::Point *currentPosInDCS, int *moveToTargetCtr)
+    void Hovering_actions(tf::Quaternion quat, geometry_msgs::Point *currentPosInDCS)
     {
         tf::Matrix3x3(quat).getRPY(roll_starting,pitch_starting,yaw_starting);
         movementTopic.publish(hoveringMsg);
 
         if (turnToTarget == true && turnedToMove == true)
         {
-            *moveToTargetCtr = 0;
             ros::Duration(2).sleep();
             currentState = MOVE_TO_TARGET;
             movementTopic.publish(moveForwardMsg);
             ROS_INFO("travelling to target ...");
+            start = ros::Time::now();
         }
     }
 
@@ -168,24 +174,24 @@ namespace StateActions
     }
 
 
-    void MoveToTarget_actions(geometry_msgs::Point *currentPosition, int *moveToTargetCtr)
+    void MoveToTarget_actions(geometry_msgs::Point *currentPosition)
     {
         if ( isDroneInRadius(currentPosition, &StateActions::destinationCoordinate) )
         {
             movementTopic.publish(hoveringMsg);
+            finish = ros::Time::now();
+            double distance = distanceFromTargetInCm(currentPosition, &StateActions::destinationCoordinate);
+            double diff = finish.toSec() - start.toSec();
+
             ros::Duration(1).sleep();
             currentState = TARGET_REACHED;
-            ROS_INFO("TARGET REACHED (%f,%f)->(%f,%f)", currentPosition->x, currentPosition->y, StateActions::destinationCoordinate.x, StateActions::destinationCoordinate.y);
+            ROS_INFO("TARGET REACHED (%f,%f)->(%f,%f)\n\tDistance from target: %.4f cm\n\tTravelling time: %f seconds\n", 
+                currentPosition->x, currentPosition->y, StateActions::destinationCoordinate.x, StateActions::destinationCoordinate.y, distance, diff);
         }
         else
         {
             movementTopic.publish(moveForwardMsg);
-            if (*moveToTargetCtr % MODULO == 0)
-            {
-                ROS_INFO("move to target (%f,%f)->(%f,%f)", currentPosition->x, currentPosition->y, StateActions::destinationCoordinate.x, StateActions::destinationCoordinate.y);
-            }
-            *moveToTargetCtr++;
-            
+            ROS_INFO("move to target (%f,%f)->(%f,%f)", currentPosition->x, currentPosition->y, StateActions::destinationCoordinate.x, StateActions::destinationCoordinate.y); 
         }
     }
 
