@@ -10,7 +10,10 @@
 
 #define DRONE_HEDGE_ADDRESS					  12
 
-#define MODULO                                 5
+#define INPUT_DIST_MIN                         1.0
+#define INPUT_DIST_MAX                         3.4
+#define OUTPUT_SPEED_MIN                       0.02
+#define OUTPUT_SPEED_MAX                       0.1
 
 #include "geometry_msgs/Point.h"
 #include "ros/ros.h"
@@ -41,6 +44,7 @@ namespace StateActions
 
     bool inTestState = false;
     double ThetaZero, Theta, Distance;
+    double currentDistance;
 
     ros::Time start, finish;
 
@@ -73,6 +77,19 @@ namespace StateActions
         turnMsg_2.angular.z = 0.2;
         calibrationMsg.linear.x = -0.1;    
         moveForwardMsg.linear.x = 0.08;
+    }
+
+    void adjustDroneSpeed(double distanceRemained)
+    {
+        float value;
+        if (distanceRemained <= INPUT_DIST_MIN)
+			value = OUTPUT_SPEED_MIN;
+		else if (distanceRemained >= INPUT_DIST_MAX)
+			value = OUTPUT_SPEED_MAX;
+        else
+            value = ((distanceRemained - INPUT_DIST_MIN) * (OUTPUT_SPEED_MAX - OUTPUT_SPEED_MIN) / (INPUT_DIST_MAX - INPUT_DIST_MIN)) + OUTPUT_SPEED_MIN;
+		
+		StateActions::moveForwardMsg.linear.x = value;
     }
 
 
@@ -180,18 +197,21 @@ namespace StateActions
         {
             movementTopic.publish(hoveringMsg);
             finish = ros::Time::now();
-            double distance = distanceFromTargetInCm(currentPosition, &StateActions::destinationCoordinate);
+            currentDistance = distanceFromTargetInCm(currentPosition, &StateActions::destinationCoordinate);
             double diff = finish.toSec() - start.toSec();
 
             ros::Duration(1).sleep();
             currentState = TARGET_REACHED;
             ROS_INFO("TARGET REACHED (%f,%f)->(%f,%f)\n\tDistance from target: %.4f cm\n\tTravelling time: %f seconds\n", 
-                currentPosition->x, currentPosition->y, StateActions::destinationCoordinate.x, StateActions::destinationCoordinate.y, distance, diff);
+                currentPosition->x, currentPosition->y, StateActions::destinationCoordinate.x, StateActions::destinationCoordinate.y, currentDistance, diff);
+            adjustDroneSpeed(INPUT_DIST_MAX);
         }
         else
         {
+            currentDistance = distanceFromTargetInMeter(currentPosition, &StateActions::destinationCoordinate);
+            adjustDroneSpeed(currentDistance);
             movementTopic.publish(moveForwardMsg);
-            ROS_INFO("move to target (%f,%f)->(%f,%f)", currentPosition->x, currentPosition->y, StateActions::destinationCoordinate.x, StateActions::destinationCoordinate.y); 
+            ROS_INFO("move to target (%f,%f)->(%f,%f)\t%.4f", currentPosition->x, currentPosition->y, StateActions::destinationCoordinate.x, StateActions::destinationCoordinate.y, moveForwardMsg.linear.x); 
         }
     }
 

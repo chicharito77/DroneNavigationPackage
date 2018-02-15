@@ -1,7 +1,7 @@
 #ifndef COORDINATEGEOMETRYCALCULATIONS_H_INCLUDE
 #define COORDINATEGEOMETRYCALCULATIONS_H_INCLUDE
  
-#define EPSILON_RADIUS_FROM_TARGET			 0.75
+#define EPSILON_RADIUS_FROM_TARGET			 0.5
 
 #include "math.h"
 #include "geometry_msgs/Point.h"
@@ -17,6 +17,12 @@ bool isDroneInRadius(geometry_msgs::Point *dronePosition, geometry_msgs::Point *
 		return true;
 
 	return false;
+}
+
+double distanceFromTargetInMeter(geometry_msgs::Point *dronePosition, geometry_msgs::Point *destPosition)
+{
+	double distanceInMeter = sqrt(pow(dronePosition->x - destPosition->x, 2) + pow(dronePosition->y - destPosition->y, 2));
+	return (distanceInMeter);
 }
 
 double distanceFromTargetInCm(geometry_msgs::Point *dronePosition, geometry_msgs::Point *destPosition)

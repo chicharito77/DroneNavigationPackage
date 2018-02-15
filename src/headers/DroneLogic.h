@@ -163,6 +163,7 @@ namespace DroneLogic
                                 targetCoordinate.x, targetCoordinate.y);
 
             setMovementValues(&droneOrientationInRad, &theta, &dist, &targetCoordinate);
+            adjustDroneSpeed(dist);
             return true;
         }
         
