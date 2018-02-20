@@ -20,18 +20,40 @@ using namespace StateActions;
 
 namespace DroneLogic
 {
-    DroneNavigationPackage::HedgePositions coordinateSystemSynchSrvMsg, calculateDroneRouteSrvMsg;
-    geometry_msgs::Point A, B;                                                                  //variables for the calculation phase
+    DroneNavigationPackage::HedgePositions marvelmindPositionRequestMsg;
+    geometry_msgs::Point A, B;                                              //variables for the calculation phase
     geometry_msgs::Point droneCoordinate, destinationCoordinate;
+    geometry_msgs::Point targetCoordinate;                                  //in DCS
 
-    int inTurningStateCounter = 0;
-
+    int serverRequestCounter;
     double droneOrientationInRad;
     double dcsOrientationInRad;
-    double turningAngleInRad, dist, theta, x_distance, y_distance;
+    double turningAngleInRad, dist, theta;
 
 
-    geometry_msgs::Point targetCoordinate, dummy_2, dummy_3, dummy_4; //in DCS
+
+    void getPositionOfDrone(geometry_msgs::Point *position)
+    {
+        marvelmindPositionRequestMsg.request.addresses[0] = DRONE_HEDGE_ADDRESS;
+        marvelmindPositionRequestMsg.response.positions[0].x_m = 0.0;
+        marvelmindPositionRequestMsg.response.positions[0].y_m = 0.0;
+        marvelmindPositionRequestMsg.response.positions[0].z_m = 0.0;        
+        serverRequestCounter = 0;
+
+        while (!positionUpdater.call(marvelmindPositionRequestMsg))
+        {
+            if (serverRequestCounter == 0)
+            {
+                ROS_WARN("Location update service unavailable! Waiting for location...");
+                serverRequestCounter++;
+            }
+        }
+
+        position->x = marvelmindPositionRequestMsg.response.positions[0].x_m;
+        position->y = marvelmindPositionRequestMsg.response.positions[0].y_m;
+        position->z = 0.0;
+    }
+
 
     bool transformPoint(geometry_msgs::Point *destination, geometry_msgs::Point *destinationInDCS, const std::string& targetFrame, const std::string& baseFrame="/W")
     {
@@ -50,17 +72,14 @@ namespace DroneLogic
             transformedCoordinate.point.y = 0;
             transformedCoordinate.point.z = 0;
 
-            //listener.waitForTransform("/ardrone_base_link", "/W", ros::Time(0), ros::Duration(1.0) );
-            //listener.transformPoint("/ardrone_base_link", baseCoordinate, transformedCoordinate);
             listener.waitForTransform(targetFrame, baseFrame, ros::Time(0), ros::Duration(1.0) );
             listener.transformPoint(targetFrame, baseCoordinate, transformedCoordinate);
+            ROS_INFO("%s -> %s transform successfull!\n", baseFrame.c_str(), targetFrame.c_str());
 
-            ROS_INFO("%s -> %s transform successfull:\n\t(%.2f, %.2f. %.2f) -> (%.2f, %.2f, %.2f) at time %.2f\n", 
+            /*ROS_INFO("%s -> %s transform successfull!\n\t(%.2f, %.2f. %.2f) -> (%.2f, %.2f, %.2f) at time %.2f\n", 
                 baseFrame.c_str(), targetFrame.c_str(), baseCoordinate.point.x, baseCoordinate.point.y, baseCoordinate.point.z,
-                transformedCoordinate.point.x, transformedCoordinate.point.y, transformedCoordinate.point.z, transformedCoordinate.header.stamp.toSec());
+                transformedCoordinate.point.x, transformedCoordinate.point.y, transformedCoordinate.point.z, transformedCoordinate.header.stamp.toSec());*/
 
-            //destinationInDCS->x = transformedCoordinate.point.y;      //with W->base_link transform
-            //destinationInDCS->y = transformedCoordinate.point.x;
             destinationInDCS->x = transformedCoordinate.point.x;
             destinationInDCS->y = transformedCoordinate.point.y;
             destinationInDCS->z = transformedCoordinate.point.z;
@@ -74,47 +93,22 @@ namespace DroneLogic
         return true;
     }
 
+
     void calculateOrientationOfDrone(geometry_msgs::Point *offset, ros::Publisher *w2dTopic)
     {
-        int inCalculationStateCounter = 0;
-        coordinateSystemSynchSrvMsg.request.addresses[0] = DRONE_HEDGE_ADDRESS;
-        
-        while (!positionUpdater.call(coordinateSystemSynchSrvMsg))
-        {
-            if (inCalculationStateCounter == 0)
-            {
-                ROS_WARN("Location update service unavailable! Waiting for location...");
-                inCalculationStateCounter++;
-            }
-        }
-        A.x = coordinateSystemSynchSrvMsg.response.positions[0].x_m;
-        A.y = coordinateSystemSynchSrvMsg.response.positions[0].y_m;
+        getPositionOfDrone(&A);
         ROS_INFO("\tPoint A measured! (%f, %f)", A.x, A.y);
 
-        coordinateSystemSynchSrvMsg.response.positions[0].x_m = 0.0;
-        coordinateSystemSynchSrvMsg.response.positions[0].y_m = 0.0;			
         movementTopic.publish(calibrationMsg);
         ros::Duration(1).sleep();
         movementTopic.publish(hoveringMsg);
         ros::Duration(6).sleep();
 
-        inCalculationStateCounter = 0;
-        while (!positionUpdater.call(coordinateSystemSynchSrvMsg))
-        {
-            if (inCalculationStateCounter == 0)
-            {
-                ROS_WARN("Location update service unavailable! Waiting for location...");
-                inCalculationStateCounter++;
-            }
-        }
-        B.x = coordinateSystemSynchSrvMsg.response.positions[0].x_m;
-        B.y = coordinateSystemSynchSrvMsg.response.positions[0].y_m;
-        ROS_INFO("\tPoint B measured! (%f, %f)", B.x, B.y);	
-        
+        getPositionOfDrone(&B);
+        ROS_INFO("\tPoint B measured! (%f, %f)", B.x, B.y);	        
         droneOrientationInRad = atan2( (A.y - B.y), (A.x - B.x) );
         dcsOrientationInRad = droneOrientationInRad - degreeToRad(90.0);
 
-        //meghívni a megfelelő topikot
         DroneNavigationPackage::TransformParameters params;
         params.X_w = offset->x;
         params.Y_w = offset->y;
@@ -123,37 +117,36 @@ namespace DroneLogic
 
         w2dTopic->publish(params);
         ROS_INFO("Orientation of {D} coordinate frame's y axis in {W}: %f degrees", radToDegree(droneOrientationInRad));
-        ROS_INFO("w2d transform set with (%.2f, %.2f) offset and %.4f degree rotation!\n\n", offset->x, offset->y, radToDegree(dcsOrientationInRad));
-        ros::Duration(2).sleep();
+        ROS_INFO("W2D transform set with (%.2f, %.2f) offset and %.4f degree rotation!\n\n", offset->x, offset->y, radToDegree(dcsOrientationInRad));
     }
 
 
 
     bool calculateDronePath(geometry_msgs::Point positionInDroneCoordinateSystem)
     {   
-        //calculateDroneRouteSrvMsg.request.addresses[0] = DRONE_HEDGE_ADDRESS;
-
-        destinationCoordinate.x = 3.2;
-        destinationCoordinate.y = 0.72;
+        bool result;
+        destinationCoordinate.x = 3.24;
+        destinationCoordinate.y = 0.64;
         destinationCoordinate.z = 1.0;
 
-        //if ( positionUpdater.call(calculateDroneRouteSrvMsg) )
+        droneCoordinate.x = B.x;
+        droneCoordinate.y = B.y;
+
+        dist = sqrt( pow(destinationCoordinate.x - droneCoordinate.x, 2) + pow (destinationCoordinate.y - droneCoordinate.y, 2) );
+        theta = atan2( (destinationCoordinate.y - droneCoordinate.y), (destinationCoordinate.x - droneCoordinate.x) );
+        turningAngleInRad = theta - droneOrientationInRad;
+
+        //don't turn bigger angle than abs(M_PI)
+        if (fabs(turningAngleInRad) > M_PI)
         {
-            //droneCoordinate.x = calculateDroneRouteSrvMsg.response.positions[0].x_m;
-            //droneCoordinate.y = calculateDroneRouteSrvMsg.response.positions[0].y_m;
-            droneCoordinate.x = B.x;
-            droneCoordinate.y = B.y;
+            turningAngleInRad = 2*M_PI + (turningAngleInRad < 0 ? 1 : -1)*turningAngleInRad;
+            ROS_INFO("recalc done\n");
+        }
 
-            dist = sqrt( pow(destinationCoordinate.x - droneCoordinate.x, 2) + pow (destinationCoordinate.y - droneCoordinate.y, 2) );
-            theta = atan2( (destinationCoordinate.y - droneCoordinate.y), (destinationCoordinate.x - droneCoordinate.x) );
-            turningAngleInRad = theta - droneOrientationInRad;
+        result = transformPoint(&destinationCoordinate, &targetCoordinate, BASE_BOTTOMCAM_TF_ID);
 
-            //transformPoint(&destinationCoordinate, &targetCoordinate, BASE_LINK_TF_ID);
-            transformPoint(&destinationCoordinate, &targetCoordinate, BASE_BOTTOMCAM_TF_ID);
-            //    transformPoint(&destinationCoordinate, &dummy_2, ODOM_TF_ID);
-            //    transformPoint(&destinationCoordinate, &dummy_3, BASE_LINK_TF_ID);
-            //    transformPoint(&destinationCoordinate, &dummy_4, BASE_FRONTCAM_TF_ID);
-
+        if (result)
+        {
             ROS_INFO("\n\tDrone in {W}: (%.4f, %.4f)\n\tDestination in {W}: (%.4f, %.4f)\n\tDistance: %.4f m\n\tTheta = %f degrees\n\tTurning angle: %f degrees\n", 
                             droneCoordinate.x, droneCoordinate.y, destinationCoordinate.x, destinationCoordinate.y,
                             dist, radToDegree(theta), radToDegree(turningAngleInRad));
@@ -164,10 +157,9 @@ namespace DroneLogic
 
             setMovementValues(&droneOrientationInRad, &theta, &dist, &targetCoordinate);
             adjustDroneSpeed(dist);
-            return true;
-        }
-        
-        //return false;
+        }        
+
+        return result;
     }
 
     
@@ -176,7 +168,6 @@ namespace DroneLogic
     {
         turnToTarget = true;
         yaw_goal = yaw_prev = yaw_remainder = 0.0;
-        inTurningStateCounter = 0;
         ROS_INFO("starting yaw in rad: %f", yaw_starting);
 
         yaw_goal = yaw_starting + turningAngleInRad;
@@ -197,7 +188,7 @@ namespace DroneLogic
         }
         else								//must turn right
         {
-            currentState = TURN_RIGHT;									//dummy value 
+            currentState = TURN_RIGHT;
             ROS_INFO("Goal := %f", yaw_goal);
 
             if (yaw_goal < -M_PI)
@@ -210,21 +201,6 @@ namespace DroneLogic
         }
     }
 
-    geometry_msgs::Point getPositionOfDrone()
-    {
-        geometry_msgs::Point position;
-        coordinateSystemSynchSrvMsg.request.addresses[0] = DRONE_HEDGE_ADDRESS;
-        
-        if (positionUpdater.call(coordinateSystemSynchSrvMsg))
-        {
-            position.x = coordinateSystemSynchSrvMsg.response.positions[0].x_m;
-            position.y = coordinateSystemSynchSrvMsg.response.positions[0].y_m;
-            position.z = 1.0;
-        }
-        //hiba lekezelése
-
-        return position;
-    }
 }
 
 

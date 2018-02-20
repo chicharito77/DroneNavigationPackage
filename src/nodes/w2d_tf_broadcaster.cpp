@@ -7,11 +7,11 @@
 #include "DroneNavigationPackage/TransformParameters.h"
 #include <iostream>
 
+int counter;
 double X_w, Y_w, Z_w, rotationInRad;
 tf::Quaternion rotationQuaternion;
 ros::Subscriber operationTopic;
 
-int counter;
 
 void setTransformationCallback(const DroneNavigationPackage::TransformParameters::ConstPtr& msg)
 {
@@ -32,13 +32,17 @@ void initialize(ros::NodeHandle *node)
     rotationQuaternion.setRPY(0,0,0);
     counter = 0;
     operationTopic = node->subscribe(INCOMING_TOPIC_NAME, QUEUE_SIZE, setTransformationCallback);
+
+    ROS_INFO("TF broadcaster node started...\n");
 }
+
+
 
 int main(int argc, char** argv)
 {
-    ros::init(argc, argv, "w2d_tf_broadcaster");
+    ros::init(argc, argv, "W2D_tf_broadcaster");
     ros::NodeHandle node;
-    ros::Rate r(15);//1000
+    ros::Rate r(15);
     tf::TransformBroadcaster broadcaster;
 
     initialize(&node);  

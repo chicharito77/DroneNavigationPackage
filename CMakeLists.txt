@@ -71,7 +71,7 @@ add_service_files(FILES
 ## Generate added messages and services with any dependencies listed here
 generate_messages(DEPENDENCIES
    					std_msgs
-								marvelmind_nav
+					marvelmind_nav
 )
 
 ################################################
@@ -128,12 +128,8 @@ add_executable(LocationProvider src/nodes/location_provider.cpp)
 target_link_libraries(LocationProvider ${catkin_LIBRARIES})
 add_dependencies(LocationProvider DroneNavigationPackage_generate_messages_cpp)
 
-add_executable(w2d_tf_broadcaster src/nodes/w2d_tf_broadcaster.cpp)
-target_link_libraries(w2d_tf_broadcaster ${catkin_LIBRARIES})
-
-# add_executable(DUMMY_listener src/nodes/DUMMY_listener.cpp)
-# target_link_libraries(DUMMY_listener ${catkin_LIBRARIES})
-
+add_executable(W2D_tf_broadcaster src/nodes/w2d_tf_broadcaster.cpp)
+target_link_libraries(W2D_tf_broadcaster ${catkin_LIBRARIES})
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}

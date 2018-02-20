@@ -1,6 +1,6 @@
 #define QUEUE_SIZE_1				1000
 #define QUEUE_SIZE_2				 100
-#define LOOP_RATE					  50
+#define LOOP_RATE					 150
 
 #include "ros/ros.h"
 #include "std_msgs/Empty.h"
@@ -12,8 +12,6 @@
 #include "DroneNavigationPackage/HedgePositions.h"
 
 #include "../headers/DroneLogic.h"
-
-using namespace StateActions;
 
 ros::Publisher takeoffTopic;
 ros::Publisher landTopic;
@@ -32,17 +30,13 @@ bool calculationDone;
 bool targetReached;
 
 geometry_msgs::Point positionBeforeTakeoff;
-geometry_msgs::Point currentPosition;
-geometry_msgs::Point currentPosInDCS;
-int moveToTargetCounter = 0;
-
+geometry_msgs::Point positionInBottomcamFrame;
 
 void odometryCallback(const nav_msgs::Odometry::ConstPtr& msg)
 {
-	DroneNavigationPackage::HedgePositions positionRefresh;
 	tf::Quaternion quat;
 	tf::quaternionMsgToTF(msg->pose.pose.orientation, quat);
-	currentPosInDCS = msg->pose.pose.position;		
+	positionInBottomcamFrame = msg->pose.pose.position;		
 
 	switch (currentState)
 	{
@@ -51,14 +45,13 @@ void odometryCallback(const nav_msgs::Odometry::ConstPtr& msg)
 
 		break;
 
-//moveToTarget eltávolitva a hoveringactinonsból meg a movetotargetból
 		case HOVERING:
-			Hovering_actions(quat, &currentPosInDCS);
+			Hovering_actions(quat, &positionInBottomcamFrame);
 
 		break;
 
 		case MOVE_TO_TARGET:
-			MoveToTarget_actions(&currentPosInDCS);
+			MoveToTarget_actions(&positionInBottomcamFrame);
 			
 		break;
 
@@ -67,18 +60,19 @@ void odometryCallback(const nav_msgs::Odometry::ConstPtr& msg)
 
 		break;
 
-		case TURN_RIGHT:		//negatív radián érték mindvégig
-			TurnRight_actions(quat, &DroneLogic::inTurningStateCounter);
+		case TURN_RIGHT:
+			TurnRight_actions(quat);
 		
 		break;
 
 		case TURN_LEFT:
-			TurnLeft_actions(quat, &DroneLogic::inTurningStateCounter);
+			TurnLeft_actions(quat);
 
 		break;
 
 	}
 }
+
 
 void setTargetCallback(const geometry_msgs::Point::ConstPtr& msg)
 {
@@ -86,32 +80,33 @@ void setTargetCallback(const geometry_msgs::Point::ConstPtr& msg)
 	destinationCoordinate.y = msg -> y;
 	destinationCoordinate.z = msg -> z;
 
-	ROS_INFO("New target in {W} saved! (%f, %f, %f)", destinationCoordinate.x, destinationCoordinate.y, destinationCoordinate.z);
+	ROS_INFO("New target in {W} saved: (%f, %f, %f)\n", destinationCoordinate.x, destinationCoordinate.y, destinationCoordinate.z);
 	calculationDone = false;
 	targetReached = false;
 }
+
 
 void interventionCallback(const DroneNavigationPackage::Intervention::ConstPtr& msg)
 {
 	if (running == false && msg->READY_TO_START == true)
 	{
-		positionBeforeTakeoff = DroneLogic::getPositionOfDrone();
+		DroneLogic::getPositionOfDrone(&positionBeforeTakeoff);
         ros::Duration(3).sleep();
 		ROS_INFO("Initialization point in {W}: (%.2f, %.2f)\n", positionBeforeTakeoff.x, positionBeforeTakeoff.y);
-
 		takeoffTopic.publish( takeoffMsg );
+
 		running = true;
 		calibrationDone = false;
 		calculationDone = false;
 		targetReached = false;
-
 		currentState = HOVERING;
 	}
 
 	if (running == true && msg->EMERGENCY_EXIT_HAPPENED == true)
 	{
-		running = false;
 		landTopic.publish( landMsg );
+
+		running = false;
 		ROS_FATAL("Drone landing requested due to emergency!");
 		ros::shutdown();
 	}
@@ -119,12 +114,12 @@ void interventionCallback(const DroneNavigationPackage::Intervention::ConstPtr& 
 	if (running == true && msg->LAND_DRONE == true)
 	{
 		landTopic.publish( landMsg );
+
 		ROS_INFO("Drone landed. Ready to use again!\n");
 		running = false;
 		calibrationDone = false;
 		calculationDone = false;
 		targetReached = false;
-
 		currentState = START;
 	}
 }
@@ -136,16 +131,19 @@ void droneOperationCallback(const std_msgs::Int8::ConstPtr& msg)
 	{
 		switch (msg->data)
 		{
-			case 1:		//calibration
+			case 1:
+
 				DroneLogic::calculateOrientationOfDrone(&positionBeforeTakeoff, &w2dTopic);
 				calibrationDone = true;
 				calculationDone = false;
+
 			break;
 	
 			case 2:
+
 				if(calibrationDone)
 				{
-					calculationDone = DroneLogic::calculateDronePath(currentPosInDCS);
+					calculationDone = DroneLogic::calculateDronePath(positionInBottomcamFrame);
 					targetReached = false;
 					
 					if (!calculationDone)
@@ -161,6 +159,7 @@ void droneOperationCallback(const std_msgs::Int8::ConstPtr& msg)
 			break;
 	
 			case 3:
+
 				if (calibrationDone && calculationDone)
 				{
 					DroneLogic::goToTarget();
@@ -171,40 +170,34 @@ void droneOperationCallback(const std_msgs::Int8::ConstPtr& msg)
 				}
 	
 			break;
-
-			/*case 4:
-				movementTopic.publish( liftingMsg );
-				ros::Duration(3).sleep();
-				movementTopic.publish( hoveringMsg );
-			break;*/
-
 		}
 	}
 	
 }
 
+
+
 int main(int argc, char **argv)
 {
 	ros::init(argc, argv, "ControlCenter");
-	ros::NodeHandle n;
-	
-	//if(ros::service::waitForService("/ardrone/flattrim", ros::Duration(10)) )
-	takeoffTopic = n.advertise<std_msgs::Empty>("/ardrone/takeoff", QUEUE_SIZE_1);
-	movementTopic = n.advertise<geometry_msgs::Twist>("/cmd_vel", QUEUE_SIZE_1);	
-	landTopic = n.advertise<std_msgs::Empty>("/ardrone/land", QUEUE_SIZE_1);
-	w2dTopic = n.advertise<DroneNavigationPackage::TransformParameters>("/ControlCenter/set_transform_parameters", QUEUE_SIZE_2);	
-	
-	operationTopic = n.subscribe("/ControlCenter/drone_operations", QUEUE_SIZE_2, droneOperationCallback);
-	externalIntervention = n.subscribe("/ControlCenter/external_intervention", QUEUE_SIZE_2, interventionCallback);
-	setTargetTopic = n.subscribe("/ControlCenter/set_target", QUEUE_SIZE_2, setTargetCallback);
-	odometryTopic = n.subscribe("/ardrone/odometry", QUEUE_SIZE_1, odometryCallback);
+	ros::NodeHandle mainNode;
 
-	positionUpdater = n.serviceClient<DroneNavigationPackage::HedgePositions>("/LocationProvider/provide_hedge_location");
+	takeoffTopic = mainNode.advertise<std_msgs::Empty>("/ardrone/takeoff", QUEUE_SIZE_1);
+	movementTopic = mainNode.advertise<geometry_msgs::Twist>("/cmd_vel", QUEUE_SIZE_1);	
+	landTopic = mainNode.advertise<std_msgs::Empty>("/ardrone/land", QUEUE_SIZE_1);
+	w2dTopic = mainNode.advertise<DroneNavigationPackage::TransformParameters>("/ControlCenter/set_transform_parameters", QUEUE_SIZE_2);	
+	
+	operationTopic = mainNode.subscribe("/ControlCenter/drone_operations", QUEUE_SIZE_2, droneOperationCallback);
+	externalIntervention = mainNode.subscribe("/ControlCenter/external_intervention", QUEUE_SIZE_2, interventionCallback);
+	setTargetTopic = mainNode.subscribe("/ControlCenter/set_target", QUEUE_SIZE_2, setTargetCallback);
+	odometryTopic = mainNode.subscribe("/ardrone/odometry", QUEUE_SIZE_1, odometryCallback);
+
+	positionUpdater = mainNode.serviceClient<DroneNavigationPackage::HedgePositions>("/LocationProvider/provide_hedge_location");
+
 	ros::Rate loop_rate(LOOP_RATE);	
 
 	system("rosservice call /ardrone/flattrim");
-	ros::Duration(1).sleep();	
-	ROS_INFO("Node started ...");	
+	ROS_INFO("ControlCenter started ...");	
 	
 	initializeMovementMessages();
 	
