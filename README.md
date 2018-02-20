@@ -40,6 +40,7 @@ In order to send the drone to it's destination, type the following commands in t
         4. alias travel='rostopic pub /ControlCenter/drone_operations std_msgs/Int8 "data: 3" '
 
 Additional commands:
+
         1. alias land='rostopic pub /ControlCenter/external_intervention DroneNavigationPackage/Intervention "EMERGENCY_EXIT_HAPPENED: false
         READY_TO_START: false
         LAND_DRONE: true" '      -> land the drone
