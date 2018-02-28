@@ -58,6 +58,10 @@ void odometryCallback(const nav_msgs::Odometry::ConstPtr& msg)
 		case TARGET_REACHED:
 			TargetReached_actions(&targetReached);
 
+			landTopic.publish( landMsg );
+			ROS_INFO("Drone landed successfully!\n");
+			ros::shutdown();
+
 		break;
 
 		case TURN_RIGHT:
@@ -67,6 +71,22 @@ void odometryCallback(const nav_msgs::Odometry::ConstPtr& msg)
 
 		case TURN_LEFT:
 			TurnLeft_actions(quat);
+
+		break;
+
+		case EMERGENCY_LANDING:
+			landTopic.publish( landMsg );
+			running = false;
+			ROS_FATAL("Drone landing requested due to stepping over the authorized area!");
+			ros::shutdown();
+
+		break;
+
+		case DRIFT_DURING_TURN:
+			landTopic.publish( landMsg );
+			running = false;
+			ROS_FATAL("Drone landing requested due to drifting during turning!");
+			ros::shutdown();
 
 		break;
 

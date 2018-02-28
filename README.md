@@ -1,8 +1,10 @@
 This is a thesis project (title: Robot control based on ROS) at University of Pannonia.
 Used technologies:
-    Oracle VM VirtualBox (Windows 10 host)
-    Ubuntu 14.04 guest OS
-    ROS Indigo Igloo
+    - Oracle VM VirtualBox (Windows 10 host)
+    - Ubuntu 14.04 guest OS
+    - ROS Indigo Igloo
+    - Marvelmind indoor localization system
+    - Parrot ARDrone 2.0
     
 The goal of my thesis work is to control an ArDrone 2.0 with the help of an ultrasonic indoor localization system. 
 This navigation system is developed by Marvelmind Robotics, and the localization and navigation of the drone is based on it. 
@@ -16,9 +18,9 @@ v1.0: The drone can travel from a starting position to a constant destination po
 method). The achieving of the destination position is supervised in the drone's coordinate system.
 
 Required ROS packages:
-  - ardrone_autonomy
-  - marvelmind_nav
-  
+  	- ardrone_autonomy
+  	- marvelmind_nav
+  	
 Usage of package: the order of node starting is
   0. roscore
   1. marvelmind_nav package's hedge_rcv_bin node

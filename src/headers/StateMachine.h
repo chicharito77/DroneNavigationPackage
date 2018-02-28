@@ -7,8 +7,10 @@
 #define TURN_LEFT							0x03
 #define MOVE_TO_TARGET						0x04
 #define TARGET_REACHED						0x05
+#define EMERGENCY_LANDING                   0x06
+#define DRIFT_DURING_TURN                   0x07
 
-#define DRONE_HEDGE_ADDRESS					  10
+#define DRONE_HEDGE_ADDRESS					  12
 
 #define INPUT_DIST_MIN                         1.0
 #define INPUT_DIST_MAX                         3.5
@@ -38,14 +40,22 @@ namespace StateActions
     volatile bool turnToTarget = false;
     volatile bool turnedToMove = false;
     geometry_msgs::Point destinationCoordinate;
+    geometry_msgs::Point rotationCentre;
     double ThetaZero, Theta, Distance;
     double currentDistance;
+
+    //map a.k.a rectangle data
+    geometry_msgs::Point A, B, C;
+    geometry_msgs::Vector3 AB, BC;
 
     ros::Time start, finish;
 
 
 
-    void setMovementValues(double *theta_zero, double *theta, double *distance, geometry_msgs::Point *_destinationCoordinate)
+    void setMovementValues(double *theta_zero, double *theta, double *distance, 
+                            geometry_msgs::Point *_destinationCoordinate, geometry_msgs::Point *_rotCenter,
+                            geometry_msgs::Point *a, geometry_msgs::Point *b, geometry_msgs::Point *c,
+                            geometry_msgs::Vector3 *vec1, geometry_msgs::Vector3 *vec2 )
     {
         ThetaZero = *theta_zero;
         Theta = *theta;
@@ -53,6 +63,13 @@ namespace StateActions
         destinationCoordinate.x = _destinationCoordinate->x;
         destinationCoordinate.y = _destinationCoordinate->y;
         destinationCoordinate.z = _destinationCoordinate->z;
+        
+        rotationCentre = *_rotCenter;
+        A = *a;
+        B = *b;
+        C = *c;
+        AB = *vec1;
+        BC = *vec2;
     }
 
 
@@ -100,10 +117,18 @@ namespace StateActions
 
         if (turnToTarget == true && turnedToMove == true)
         {
-            start = ros::Time::now();
-            currentState = MOVE_TO_TARGET;
-            movementTopic.publish(moveForwardMsg);
-            ROS_INFO("travelling to target ...");
+            if ( !isDroneInRadius(currentPosInDCS, &rotationCentre) )
+            {
+                currentState = DRIFT_DURING_TURN;
+                movementTopic.publish(hoveringMsg);
+            }
+            else
+            {
+                start = ros::Time::now();
+                currentState = MOVE_TO_TARGET;
+                movementTopic.publish(moveForwardMsg);
+            }
+  
         }
     }
 
@@ -188,26 +213,31 @@ namespace StateActions
 
     void MoveToTarget_actions(geometry_msgs::Point *currentPosition)
     {
-        if ( isDroneInRadius(currentPosition, &StateActions::destinationCoordinate) )
+        if ( isPointInsideCorridor(*currentPosition, AB, BC, A, B, C) )
         {
-            movementTopic.publish(hoveringMsg);
-            finish = ros::Time::now();
-            currentDistance = distanceFromTargetInCm(currentPosition, &StateActions::destinationCoordinate);
-            double diff = finish.toSec() - start.toSec();
+            if ( isDroneInRadius(currentPosition, &StateActions::destinationCoordinate) )
+            {
+                movementTopic.publish(hoveringMsg);
+                finish = ros::Time::now();
+                currentDistance = distanceFromTargetInCm(currentPosition, &StateActions::destinationCoordinate);
+                double diff = finish.toSec() - start.toSec();
 
-            currentState = TARGET_REACHED;
-            ROS_INFO("TARGET REACHED (%f,%f)->(%f,%f)\n\tDistance from target: %.4f cm\n\tTravelling time: %f seconds\n", 
-                currentPosition->x, currentPosition->y, StateActions::destinationCoordinate.x, StateActions::destinationCoordinate.y, currentDistance, diff);
-            adjustDroneSpeed(INPUT_DIST_MAX);
+                currentState = TARGET_REACHED;
+                ROS_INFO("TARGET REACHED (%f,%f)->(%f,%f)\n\tDistance from target: %.4f cm\n\tTravelling time: %f seconds\n", 
+                    currentPosition->x, currentPosition->y, StateActions::destinationCoordinate.x, StateActions::destinationCoordinate.y, currentDistance, diff);
+            }
+            else
+            {
+                currentDistance = distanceFromTargetInMeter(currentPosition, &StateActions::destinationCoordinate);
+                adjustDroneSpeed(currentDistance);
+                movementTopic.publish(moveForwardMsg);
+                ROS_INFO("move to target (%f,%f)\t%.4f", currentPosition->x, currentPosition->y, moveForwardMsg.linear.x);
+            }
         }
         else
         {
-            currentDistance = distanceFromTargetInMeter(currentPosition, &StateActions::destinationCoordinate);
-            adjustDroneSpeed(currentDistance);
-            movementTopic.publish(moveForwardMsg);
-            ROS_INFO("move to target (%f,%f)->(%f,%f)\t%.4f", currentPosition->x, currentPosition->y, StateActions::destinationCoordinate.x, StateActions::destinationCoordinate.y, moveForwardMsg.linear.x);
-
-            //TODO: emergency exit handling!!! 
+            movementTopic.publish(hoveringMsg);
+            currentState = EMERGENCY_LANDING;
         }
     }
 
@@ -217,8 +247,8 @@ namespace StateActions
         turnToTarget = false;
         turnedToMove = false;
         *targetReached = true;
-        currentState = HOVERING;
     }
+
 }
 
 /* Your function statement here */

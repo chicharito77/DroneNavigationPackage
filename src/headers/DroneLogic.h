@@ -9,6 +9,7 @@
 
 #include "ros/ros.h"
 #include <geometry_msgs/PointStamped.h>
+#include <geometry_msgs/Vector3.h>
 #include <tf/transform_listener.h>
 #include <iostream>
 #include <string.h>
@@ -23,12 +24,17 @@ namespace DroneLogic
     DroneNavigationPackage::HedgePositions marvelmindPositionRequestMsg;
     geometry_msgs::Point A, B;                                              //variables for the calculation phase
     geometry_msgs::Point droneCoordinate, destinationCoordinate;
-    geometry_msgs::Point targetCoordinate;                                  //in DCS
+    
+    //MAP data
+    geometry_msgs::Point startCoordinate, targetCoordinate;                 //in DCS
+    geometry_msgs::Point S_A, S_B, D_C, D_D;
+    geometry_msgs::Vector3 AB, BC;
 
     int serverRequestCounter;
     double droneOrientationInRad;
     double dcsOrientationInRad;
     double turningAngleInRad, dist, theta;
+    double dist_2;                          //calculated distance in droneCoordSystem
 
 
 
@@ -52,6 +58,30 @@ namespace DroneLogic
         position->x = marvelmindPositionRequestMsg.response.positions[0].x_m;
         position->y = marvelmindPositionRequestMsg.response.positions[0].y_m;
         position->z = 0.0;
+    }
+
+    
+    void createMap()
+    {
+        //dist volt itt, lecserélem dist2-re
+        double R_diagonal = sqrt( pow(dist_2,2) + pow(EPSILON_RADIUS_FROM_TARGET, 2) );
+
+        intersectionPointsOfCircles(startCoordinate, EPSILON_RADIUS_FROM_TARGET,
+                                    targetCoordinate, R_diagonal, &S_A, &S_B);
+
+        //valahol itt lenne a modification, hogy úgy jöjjön létre a és b hoy hosszának aránya m-hez képest 
+        //közel80%-a legyen        
+        intersectionPointsOfCircles(startCoordinate, R_diagonal,
+                                    targetCoordinate, EPSILON_RADIUS_FROM_TARGET, &D_C, &D_D);
+
+        //BC Must be perpendicular to AB
+        AB = createVector(S_A, S_B);
+        getPerpendicularVector(AB, S_B, BC, D_C, D_D);
+
+        //listázni aszámolás eredményeit, majd ezeket átmásolni statemachine-ba!!!
+        ROS_INFO("Travel corridor calculated! R_diag = %.4f\n\tA(%.2f; %.2f)\tB(%.2f; %.2f)\n\tC(%.2f; %.2f)\tD(%.2f; %.2f)\n\tAB vector->(%.4f; %.4f)\n\tBC vector->(%.4f; %.4f)\n", 
+                    R_diagonal, S_A.x, S_A.y, S_B.x, S_B.y, D_C.x, D_C.y, D_D.x, D_D.y,
+                    AB.x, AB.y, BC.x, BC.y);
     }
 
 
@@ -125,8 +155,8 @@ namespace DroneLogic
     bool calculateDronePath(geometry_msgs::Point positionInDroneCoordinateSystem)
     {   
         bool result;
-        destinationCoordinate.x = 3.24;
-        destinationCoordinate.y = 0.64;
+        destinationCoordinate.x = 3.11;
+        destinationCoordinate.y = 0.67;
         destinationCoordinate.z = 1.0;
 
         droneCoordinate.x = B.x;
@@ -144,6 +174,9 @@ namespace DroneLogic
         }
 
         result = transformPoint(&destinationCoordinate, &targetCoordinate, BASE_BOTTOMCAM_TF_ID);
+        startCoordinate = positionInDroneCoordinateSystem;
+
+        dist_2 = sqrt( pow(targetCoordinate.x - startCoordinate.x, 2) + pow (targetCoordinate.y - startCoordinate.y, 2) );
 
         if (result)
         {
@@ -151,12 +184,16 @@ namespace DroneLogic
                             droneCoordinate.x, droneCoordinate.y, destinationCoordinate.x, destinationCoordinate.y,
                             dist, radToDegree(theta), radToDegree(turningAngleInRad));
 
-            ROS_INFO("\n\tDrone in {D}: (%.4f, %.4f)\n\tDestination in {D}: (%.4f, %.4f)\n", 
+            ROS_INFO("\n\tDrone in {D}: (%.4f, %.4f)\n\tDestination in {D}: (%.4f, %.4f)\n\tDistance: %.4f m\n", 
                                 positionInDroneCoordinateSystem.x, positionInDroneCoordinateSystem.y, 
-                                targetCoordinate.x, targetCoordinate.y);
+                                targetCoordinate.x, targetCoordinate.y, dist_2);
 
-            setMovementValues(&droneOrientationInRad, &theta, &dist, &targetCoordinate);
-            adjustDroneSpeed(dist);
+            createMap();
+
+            setMovementValues(&droneOrientationInRad, &theta, &dist, &targetCoordinate, &startCoordinate,
+                                &S_A, &S_B, &D_C, &AB, &BC);
+            //adjustDroneSpeed(dist);
+            adjustDroneSpeed(dist_2);
         }        
 
         return result;
