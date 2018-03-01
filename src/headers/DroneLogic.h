@@ -63,14 +63,44 @@ namespace DroneLogic
     
     void createMap()
     {
-        //dist volt itt, lecserélem dist2-re
         double R_diagonal = sqrt( pow(dist_2,2) + pow(EPSILON_RADIUS_FROM_TARGET, 2) );
 
-        intersectionPointsOfCircles(startCoordinate, EPSILON_RADIUS_FROM_TARGET,
+        //bisection method
+        geometry_msgs::Point helper;
+        double R_increment;
+        double tangentOfDS;
+        double ratio;
+        double lengthOfAB;
+        
+        tangentOfDS= atan2( startCoordinate.y - targetCoordinate.y, startCoordinate.x - targetCoordinate.x );
+        helper.x = startCoordinate.x + EPSILON_RADIUS_FROM_TARGET*cos(tangentOfDS);
+        helper.y = startCoordinate.y + EPSILON_RADIUS_FROM_TARGET*sin(tangentOfDS);
+        R_increment = EPSILON_RADIUS_FROM_TARGET / 2.0;
+
+        do
+        {
+            intersectionPointsOfCircles(startCoordinate, EPSILON_RADIUS_FROM_TARGET,
                                     targetCoordinate, R_diagonal, &S_A, &S_B);
 
-        //valahol itt lenne a modification, hogy úgy jöjjön létre a és b hoy hosszának aránya m-hez képest 
-        //közel80%-a legyen        
+            lengthOfAB = distanceFromTargetInMeter(&S_A, &S_B);
+            ratio = EPSILON_RADIUS_FROM_TARGET / lengthOfAB;
+            
+            if (  !(ratio >= 0.8 && ratio <= 0.9) )
+            {
+                if (ratio < 0.8)
+                {
+                    R_diagonal = R_diagonal + (R_increment / 2.0);
+                }
+                else
+                {
+                    R_diagonal = R_diagonal - (R_increment / 2.0);
+                }
+            }  
+        }
+        while( !(ratio >= 0.8 && ratio <= 0.9) );
+
+        /*intersectionPointsOfCircles(startCoordinate, EPSILON_RADIUS_FROM_TARGET,
+                                    targetCoordinate, R_diagonal, &S_A, &S_B);*/
         intersectionPointsOfCircles(startCoordinate, R_diagonal,
                                     targetCoordinate, EPSILON_RADIUS_FROM_TARGET, &D_C, &D_D);
 

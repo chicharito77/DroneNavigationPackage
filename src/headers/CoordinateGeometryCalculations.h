@@ -48,6 +48,12 @@ geometry_msgs::Vector3 getPerpendicularVector(geometry_msgs::Vector3 &base, geom
 }
 
 
+double vectorLength2D(geometry_msgs::Vector3 &vec)
+{
+	return ( sqrt( pow(vec.x, 2) + pow(vec.y, 2) ) );
+}
+
+
 //----------------------------------------------map operations---------------------------------------------------
 
 bool isPointInsideCorridor(geometry_msgs::Point &testPoint, geometry_msgs::Vector3 &AB, geometry_msgs::Vector3 &BC,
