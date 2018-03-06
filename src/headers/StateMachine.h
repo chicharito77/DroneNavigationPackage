@@ -10,7 +10,7 @@
 #define EMERGENCY_LANDING                   0x06
 #define DRIFT_DURING_TURN                   0x07
 
-#define DRONE_HEDGE_ADDRESS					  12
+#define DRONE_HEDGE_ADDRESS					  10
 
 #define INPUT_DIST_MIN                         1.0
 #define INPUT_DIST_MAX                         3.5
@@ -238,6 +238,7 @@ namespace StateActions
         {
             movementTopic.publish(hoveringMsg);
             currentState = EMERGENCY_LANDING;
+            ROS_FATAL("(%.4f, %.4f)", currentPosition->x, currentPosition->y);
         }
     }
 

@@ -61,16 +61,18 @@ namespace DroneLogic
     }
 
     
-    void createMap()
+    void createCorridor()
     {
         double R_diagonal = sqrt( pow(dist_2,2) + pow(EPSILON_RADIUS_FROM_TARGET, 2) );
 
         //bisection method
         geometry_msgs::Point helper;
+        double R_orig = R_diagonal;
         double R_increment;
         double tangentOfDS;
         double ratio;
         double lengthOfAB;
+        int iterationStep = 0;
         
         tangentOfDS= atan2( startCoordinate.y - targetCoordinate.y, startCoordinate.x - targetCoordinate.x );
         helper.x = startCoordinate.x + EPSILON_RADIUS_FROM_TARGET*cos(tangentOfDS);
@@ -79,6 +81,7 @@ namespace DroneLogic
 
         do
         {
+            iterationStep++;            
             intersectionPointsOfCircles(startCoordinate, EPSILON_RADIUS_FROM_TARGET,
                                     targetCoordinate, R_diagonal, &S_A, &S_B);
 
@@ -89,15 +92,18 @@ namespace DroneLogic
             {
                 if (ratio < 0.8)
                 {
-                    R_diagonal = R_diagonal + (R_increment / 2.0);
+                    R_diagonal = R_diagonal + (R_increment);
                 }
                 else
                 {
-                    R_diagonal = R_diagonal - (R_increment / 2.0);
+                    R_diagonal = R_diagonal - (R_increment);
                 }
+                R_increment /= 2.0;
             }  
         }
         while( !(ratio >= 0.8 && ratio <= 0.9) );
+
+        ROS_INFO("R_diag found in %d. iteration (%.4f -> %.4f)", iterationStep, R_orig, R_diagonal);
 
         /*intersectionPointsOfCircles(startCoordinate, EPSILON_RADIUS_FROM_TARGET,
                                     targetCoordinate, R_diagonal, &S_A, &S_B);*/
@@ -109,8 +115,8 @@ namespace DroneLogic
         getPerpendicularVector(AB, S_B, BC, D_C, D_D);
 
         //listázni aszámolás eredményeit, majd ezeket átmásolni statemachine-ba!!!
-        ROS_INFO("Travel corridor calculated! R_diag = %.4f\n\tA(%.2f; %.2f)\tB(%.2f; %.2f)\n\tC(%.2f; %.2f)\tD(%.2f; %.2f)\n\tAB vector->(%.4f; %.4f)\n\tBC vector->(%.4f; %.4f)\n", 
-                    R_diagonal, S_A.x, S_A.y, S_B.x, S_B.y, D_C.x, D_C.y, D_D.x, D_D.y,
+        ROS_INFO("Travel corridor calculated!\n\tA(%.2f; %.2f)\tB(%.2f; %.2f)\n\tC(%.2f; %.2f)\tD(%.2f; %.2f)\n\tAB vector->(%.4f; %.4f)\n\tBC vector->(%.4f; %.4f)\n", 
+                    S_A.x, S_A.y, S_B.x, S_B.y, D_C.x, D_C.y, D_D.x, D_D.y,
                     AB.x, AB.y, BC.x, BC.y);
     }
 
@@ -185,8 +191,8 @@ namespace DroneLogic
     bool calculateDronePath(geometry_msgs::Point positionInDroneCoordinateSystem)
     {   
         bool result;
-        destinationCoordinate.x = 3.11;
-        destinationCoordinate.y = 0.67;
+        destinationCoordinate.x = 3.218;
+        destinationCoordinate.y = 0.65;
         destinationCoordinate.z = 1.0;
 
         droneCoordinate.x = B.x;
@@ -218,7 +224,7 @@ namespace DroneLogic
                                 positionInDroneCoordinateSystem.x, positionInDroneCoordinateSystem.y, 
                                 targetCoordinate.x, targetCoordinate.y, dist_2);
 
-            createMap();
+            createCorridor();
 
             setMovementValues(&droneOrientationInRad, &theta, &dist, &targetCoordinate, &startCoordinate,
                                 &S_A, &S_B, &D_C, &AB, &BC);
