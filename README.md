@@ -54,6 +54,7 @@ Additional commands:
         3. alias drone_reset='rostopic pub /ardrone/reset std_msgs/Empty "{}"'    -> reset the drone
 
         
-
+        
+v1.1: A travelling corridor has been defined around the travel-vector. The main goal of this area is to detect if the drone is left the "restricted flying area". In this case, the drone is forced to land. This feature is the basis of a PID control.
 
 
