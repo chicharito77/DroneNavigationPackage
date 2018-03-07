@@ -6,6 +6,8 @@
 #define BASE_LINK_TF_ID                "/ardrone_base_link"
 #define BASE_FRONTCAM_TF_ID            "/ardrone_base_frontcam"
 #define BASE_BOTTOMCAM_TF_ID           "/ardrone_base_bottomcam"
+#define RATIO_LOW                       0.75
+#define RATIO_UP                        0.85
 
 #include "ros/ros.h"
 #include <geometry_msgs/PointStamped.h>
@@ -18,6 +20,7 @@
 #include "StateMachine.h"
 
 using namespace StateActions;
+using namespace std;
 
 namespace DroneLogic
 {
@@ -88,9 +91,9 @@ namespace DroneLogic
             lengthOfAB = distanceFromTargetInMeter(&S_A, &S_B);
             ratio = EPSILON_RADIUS_FROM_TARGET / lengthOfAB;
             
-            if (  !(ratio >= 0.8 && ratio <= 0.9) )
+            if ( !(ratio >= RATIO_LOW && ratio <= RATIO_UP) )
             {
-                if (ratio < 0.8)
+                if (ratio < RATIO_LOW)
                 {
                     R_diagonal = R_diagonal + (R_increment);
                 }
@@ -101,12 +104,9 @@ namespace DroneLogic
                 R_increment /= 2.0;
             }  
         }
-        while( !(ratio >= 0.8 && ratio <= 0.9) );
+        while( !(ratio >= RATIO_LOW && ratio <= RATIO_UP) );
 
         ROS_INFO("R_diag found in %d. iteration (%.4f -> %.4f)", iterationStep, R_orig, R_diagonal);
-
-        /*intersectionPointsOfCircles(startCoordinate, EPSILON_RADIUS_FROM_TARGET,
-                                    targetCoordinate, R_diagonal, &S_A, &S_B);*/
         intersectionPointsOfCircles(startCoordinate, R_diagonal,
                                     targetCoordinate, EPSILON_RADIUS_FROM_TARGET, &D_C, &D_D);
 
@@ -191,8 +191,8 @@ namespace DroneLogic
     bool calculateDronePath(geometry_msgs::Point positionInDroneCoordinateSystem)
     {   
         bool result;
-        destinationCoordinate.x = 3.218;
-        destinationCoordinate.y = 0.65;
+        destinationCoordinate.x = 4.04;
+        destinationCoordinate.y = 3.17;
         destinationCoordinate.z = 1.0;
 
         droneCoordinate.x = B.x;
@@ -228,7 +228,6 @@ namespace DroneLogic
 
             setMovementValues(&droneOrientationInRad, &theta, &dist, &targetCoordinate, &startCoordinate,
                                 &S_A, &S_B, &D_C, &AB, &BC);
-            //adjustDroneSpeed(dist);
             adjustDroneSpeed(dist_2);
         }        
 

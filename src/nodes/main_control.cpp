@@ -60,6 +60,7 @@ void odometryCallback(const nav_msgs::Odometry::ConstPtr& msg)
 
 			landTopic.publish( landMsg );
 			ROS_INFO("Drone landed successfully!\n");
+
 			ros::shutdown();
 
 		break;
@@ -78,6 +79,7 @@ void odometryCallback(const nav_msgs::Odometry::ConstPtr& msg)
 			landTopic.publish( landMsg );
 			running = false;
 			ROS_FATAL("Drone landing requested due to stepping over the authorized area!");
+			
 			ros::shutdown();
 
 		break;
@@ -86,6 +88,7 @@ void odometryCallback(const nav_msgs::Odometry::ConstPtr& msg)
 			landTopic.publish( landMsg );
 			running = false;
 			ROS_FATAL("Drone landing requested due to drifting during turning!");
+			
 			ros::shutdown();
 
 		break;
