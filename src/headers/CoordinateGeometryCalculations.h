@@ -2,6 +2,7 @@
 #define COORDINATEGEOMETRYCALCULATIONS_H_INCLUDE
  
 #define EPSILON_RADIUS_FROM_TARGET			 0.6
+#define TARGET_RADIUS						 0.3
 
 #include "math.h"
 #include "geometry_msgs/Point.h"
@@ -55,6 +56,14 @@ double vectorLength2D(geometry_msgs::Vector3 &vec)
 
 
 //----------------------------------------------map operations---------------------------------------------------
+double getSignedDistanceFromPointToLine(geometry_msgs::Point &startPoint, geometry_msgs::Point &endPoint, geometry_msgs::Point &testPoint, double &normalLenghtOfVec)
+{
+	//int value = (testPoint.x - startPoint.x) * (endPoint.y - startPoint.y) - (testPoint.y - startPoint.y) * (endPoint.x - startPoint.x);
+	//double normalLength = sqrt( pow(endPoint.x - startPoint.x, 2) + pow(endPoint.y - startPoint.y, 2) );
+	double value = (double)((testPoint.x - startPoint.x) * (endPoint.y - startPoint.y) - (testPoint.y - startPoint.y) * (endPoint.x - startPoint.x)) / normalLenghtOfVec;	
+	return value;
+}
+
 
 bool isPointInsideCorridor(geometry_msgs::Point &testPoint, geometry_msgs::Vector3 &AB, geometry_msgs::Vector3 &BC,
 							geometry_msgs::Point &A, geometry_msgs::Point &B, geometry_msgs::Point &C)
@@ -121,7 +130,7 @@ bool isRadianInZeroInterval(double *value)
 
 bool isDroneInRadius(geometry_msgs::Point *dronePosition, geometry_msgs::Point *destPosition)
 {
-	if ( pow(dronePosition->x - destPosition->x, 2) + pow(dronePosition->y - destPosition->y, 2) <= pow(EPSILON_RADIUS_FROM_TARGET, 2) )
+	if ( pow(dronePosition->x - destPosition->x, 2) + pow(dronePosition->y - destPosition->y, 2) <= pow(TARGET_RADIUS, 2) )
 		return true;
 
 	return false;

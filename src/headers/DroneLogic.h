@@ -6,8 +6,8 @@
 #define BASE_LINK_TF_ID                "/ardrone_base_link"
 #define BASE_FRONTCAM_TF_ID            "/ardrone_base_frontcam"
 #define BASE_BOTTOMCAM_TF_ID           "/ardrone_base_bottomcam"
-#define RATIO_LOW                       0.75
-#define RATIO_UP                        0.85
+#define RATIO_LOW                       0.68            //0.62      //ideal: 0.7
+#define RATIO_UP                        0.72            //0.68      //ideal: 0.65
 
 #include "ros/ros.h"
 #include <geometry_msgs/PointStamped.h>
@@ -38,6 +38,11 @@ namespace DroneLogic
     double dcsOrientationInRad;
     double turningAngleInRad, dist, theta;
     double dist_2;                          //calculated distance in droneCoordSystem
+
+
+    //pid control
+    double Kp;
+    double corridorSide1, corridorSide2;
 
 
 
@@ -114,10 +119,17 @@ namespace DroneLogic
         AB = createVector(S_A, S_B);
         getPerpendicularVector(AB, S_B, BC, D_C, D_D);
 
+        corridorSide1 = vectorLength2D(AB);
+        corridorSide2 = vectorLength2D(BC);
+
+        Kp = SIDESPEED_MAX / (corridorSide1/2.0);
+
         //listázni aszámolás eredményeit, majd ezeket átmásolni statemachine-ba!!!
-        ROS_INFO("Travel corridor calculated!\n\tA(%.2f; %.2f)\tB(%.2f; %.2f)\n\tC(%.2f; %.2f)\tD(%.2f; %.2f)\n\tAB vector->(%.4f; %.4f)\n\tBC vector->(%.4f; %.4f)\n", 
+        ROS_INFO("Travel corridor calculated!\n\tA(%.2f; %.2f)\tB(%.2f; %.2f)\n\tC(%.2f; %.2f)\tD(%.2f; %.2f)\n\tAB vector->(%.4f; %.4f)\n\tBC vector->(%.4f; %.4f)", 
                     S_A.x, S_A.y, S_B.x, S_B.y, D_C.x, D_C.y, D_D.x, D_D.y,
                     AB.x, AB.y, BC.x, BC.y);
+
+        ROS_INFO("PID details\n\tKp_linear.y=%.4f\n\tStarting linear speed=%.4f\n", Kp, moveForwardMsg.linear.x);
     }
 
 
@@ -191,8 +203,8 @@ namespace DroneLogic
     bool calculateDronePath(geometry_msgs::Point positionInDroneCoordinateSystem)
     {   
         bool result;
-        destinationCoordinate.x = 4.04;
-        destinationCoordinate.y = 3.17;
+        destinationCoordinate.x = 4.96;
+        destinationCoordinate.y = 2.94;
         destinationCoordinate.z = 1.0;
 
         droneCoordinate.x = B.x;
@@ -224,11 +236,11 @@ namespace DroneLogic
                                 positionInDroneCoordinateSystem.x, positionInDroneCoordinateSystem.y, 
                                 targetCoordinate.x, targetCoordinate.y, dist_2);
 
+            adjustDroneSpeed(dist_2);
             createCorridor();
 
             setMovementValues(&droneOrientationInRad, &theta, &dist, &targetCoordinate, &startCoordinate,
-                                &S_A, &S_B, &D_C, &AB, &BC);
-            adjustDroneSpeed(dist_2);
+                                &S_A, &S_B, &D_C, &AB, &BC, &Kp);
         }        
 
         return result;

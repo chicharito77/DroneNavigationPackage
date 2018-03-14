@@ -17,6 +17,8 @@
 #define OUTPUT_SPEED_MIN                       0.02
 #define OUTPUT_SPEED_MAX                       0.1
 
+#define SIDESPEED_MAX                          0.1
+
 #include "geometry_msgs/Point.h"
 #include "ros/ros.h"
 #include "geometry_msgs/Twist.h"
@@ -49,13 +51,17 @@ namespace StateActions
     geometry_msgs::Vector3 AB, BC;
 
     ros::Time start, finish;
+    double Kp;
+    int signOfLeftSide = 0;
+    double normalLengthOfST;
+    double actualDistanceFromVec;
 
 
 
     void setMovementValues(double *theta_zero, double *theta, double *distance, 
                             geometry_msgs::Point *_destinationCoordinate, geometry_msgs::Point *_rotCenter,
                             geometry_msgs::Point *a, geometry_msgs::Point *b, geometry_msgs::Point *c,
-                            geometry_msgs::Vector3 *vec1, geometry_msgs::Vector3 *vec2 )
+                            geometry_msgs::Vector3 *vec1, geometry_msgs::Vector3 *vec2, double *Kp_linear_y)
     {
         ThetaZero = *theta_zero;
         Theta = *theta;
@@ -70,6 +76,7 @@ namespace StateActions
         C = *c;
         AB = *vec1;
         BC = *vec2;
+        Kp = *Kp_linear_y;
     }
 
 
@@ -89,7 +96,7 @@ namespace StateActions
     }
 
 
-    void adjustDroneSpeed(double distanceRemained)
+    void adjustDroneSpeed(double distanceRemained, double distFromVec=DBL_MIN)
     {
         float value;
         if (distanceRemained <= INPUT_DIST_MIN)
@@ -99,7 +106,17 @@ namespace StateActions
         else
             value = ((distanceRemained - INPUT_DIST_MIN) * (OUTPUT_SPEED_MAX - OUTPUT_SPEED_MIN) / (INPUT_DIST_MAX - INPUT_DIST_MIN)) + OUTPUT_SPEED_MIN;
 		
+
 		StateActions::moveForwardMsg.linear.x = value;
+        if (distFromVec != DBL_MIN) 
+        {
+            StateActions::moveForwardMsg.linear.y = Kp * distFromVec;
+            ROS_INFO("x -> %.4f, y -> %.4f", moveForwardMsg.linear.x, moveForwardMsg.linear.y);
+        }
+        else
+        {
+            StateActions::moveForwardMsg.linear.y = 0.0;
+        }   
     }
 
 
@@ -117,17 +134,17 @@ namespace StateActions
 
         if (turnToTarget == true && turnedToMove == true)
         {
-            if ( !isDroneInRadius(currentPosInDCS, &rotationCentre) )
+            /*if ( !isDroneInRadius(currentPosInDCS, &rotationCentre) )
             {
                 currentState = DRIFT_DURING_TURN;
                 movementTopic.publish(hoveringMsg);
             }
             else
-            {
+            {*/
                 start = ros::Time::now();
                 currentState = MOVE_TO_TARGET;
                 movementTopic.publish(moveForwardMsg);
-            }
+            //}
   
         }
     }
@@ -225,20 +242,37 @@ namespace StateActions
                 currentState = TARGET_REACHED;
                 ROS_INFO("TARGET REACHED (%f,%f)->(%f,%f)\n\tDistance from target: %.4f cm\n\tTravelling time: %f seconds\n", 
                     currentPosition->x, currentPosition->y, StateActions::destinationCoordinate.x, StateActions::destinationCoordinate.y, currentDistance, diff);
+                		
+                ros::Duration(3).sleep();
             }
             else
             {
+                if (signOfLeftSide == 0)
+                {
+                    geometry_msgs::Point onTheLeft;
+                    onTheLeft.x = rotationCentre.x - 1.0;
+                    onTheLeft.y = rotationCentre.y;
+            
+                    normalLengthOfST = sqrt( pow(destinationCoordinate.x - rotationCentre.x, 2) + pow(destinationCoordinate.y - rotationCentre.y, 2) );		
+                    signOfLeftSide = (getSignedDistanceFromPointToLine(rotationCentre, destinationCoordinate, onTheLeft, normalLengthOfST) < 0) ? -1 : 1;
+            
+                    Kp = (signOfLeftSide == 1) ? (-1 * Kp) : Kp;
+                    if ( signOfLeftSide == 1 ) ROS_INFO("Sign of Kp changed!");
+                }
+
+                actualDistanceFromVec = getSignedDistanceFromPointToLine(rotationCentre, destinationCoordinate, *currentPosition, normalLengthOfST);	
                 currentDistance = distanceFromTargetInMeter(currentPosition, &StateActions::destinationCoordinate);
-                adjustDroneSpeed(currentDistance);
+                adjustDroneSpeed(currentDistance, actualDistanceFromVec);
+                
                 movementTopic.publish(moveForwardMsg);
-                ROS_INFO("move to target (%f,%f)\t%.4f", currentPosition->x, currentPosition->y, moveForwardMsg.linear.x);
+                ROS_INFO("\tmove to target (%f,%f)", currentPosition->x, currentPosition->y);
             }
         }
         else
         {
             movementTopic.publish(hoveringMsg);
             currentState = EMERGENCY_LANDING;
-            ROS_FATAL("(%.4f, %.4f)", currentPosition->x, currentPosition->y);
+            ROS_FATAL("OUTSIDE THE CORRIDOR: (%.4f, %.4f)", currentPosition->x, currentPosition->y);
         }
     }
 

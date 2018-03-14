@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(DroneNavigationPackage)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
-# add_compile_options(-std=c++11)
+add_compile_options(-std=c++11)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -121,6 +121,7 @@ include_directories(
 )
 
 add_executable(ControlCenter src/nodes/main_control.cpp)
+			
 target_link_libraries(ControlCenter ${catkin_LIBRARIES})
 add_dependencies(ControlCenter DroneNavigationPackage_generate_messages_cpp)
 
@@ -158,9 +159,9 @@ target_link_libraries(W2D_tf_broadcaster ${catkin_LIBRARIES})
 
 ## Specify libraries to link a library or executable target against
 #target_link_libraries(
-#	   ${PROJECT_NAME}_node
+#	   ControlCenter
 #	   ${catkin_LIBRARIES}
-# )
+#)
 
 #############
 ## Install ##
