@@ -2,7 +2,7 @@
 #define COORDINATEGEOMETRYCALCULATIONS_H_INCLUDE
  
 #define EPSILON_RADIUS_FROM_TARGET			 0.6
-#define TARGET_RADIUS						 0.3
+#define TARGET_RADIUS						 0.25
 
 #include "math.h"
 #include "geometry_msgs/Point.h"

@@ -19,6 +19,8 @@
 
 #define SIDESPEED_MAX                          0.1
 
+#define MOVEMENT_MODULO                       10
+
 #include "geometry_msgs/Point.h"
 #include "ros/ros.h"
 #include "geometry_msgs/Twist.h"
@@ -55,6 +57,8 @@ namespace StateActions
     int signOfLeftSide = 0;
     double normalLengthOfST;
     double actualDistanceFromVec;
+
+    int movementCtr;
 
 
 
@@ -111,7 +115,6 @@ namespace StateActions
         if (distFromVec != DBL_MIN) 
         {
             StateActions::moveForwardMsg.linear.y = Kp * distFromVec;
-            ROS_INFO("x -> %.4f, y -> %.4f", moveForwardMsg.linear.x, moveForwardMsg.linear.y);
         }
         else
         {
@@ -122,30 +125,20 @@ namespace StateActions
 
     void Start_actions(tf::Quaternion quat)
     {
-        //tf::Matrix3x3(quat).getRPY(roll_starting,pitch_starting,yaw_starting);
         movementTopic.publish(hoveringMsg);
     }
 
 
-    void Hovering_actions(tf::Quaternion quat, geometry_msgs::Point *currentPosInDCS)
+    void Hovering_actions(tf::Quaternion quat)
     {
         tf::Matrix3x3(quat).getRPY(roll_starting,pitch_starting,yaw_starting);
         movementTopic.publish(hoveringMsg);
 
         if (turnToTarget == true && turnedToMove == true)
         {
-            /*if ( !isDroneInRadius(currentPosInDCS, &rotationCentre) )
-            {
-                currentState = DRIFT_DURING_TURN;
-                movementTopic.publish(hoveringMsg);
-            }
-            else
-            {*/
-                start = ros::Time::now();
-                currentState = MOVE_TO_TARGET;
-                movementTopic.publish(moveForwardMsg);
-            //}
-  
+            start = ros::Time::now();
+            currentState = MOVE_TO_TARGET;
+            movementTopic.publish(moveForwardMsg);
         }
     }
 
@@ -228,20 +221,20 @@ namespace StateActions
     }
 
 
-    void MoveToTarget_actions(geometry_msgs::Point *currentPosition)
+    void MoveToTarget_actions(geometry_msgs::Point &currentPosition)
     {
-        if ( isPointInsideCorridor(*currentPosition, AB, BC, A, B, C) )
+        if ( isPointInsideCorridor(currentPosition, AB, BC, A, B, C) )
         {
-            if ( isDroneInRadius(currentPosition, &StateActions::destinationCoordinate) )
+            if ( isDroneInRadius(&currentPosition, &StateActions::destinationCoordinate) )
             {
                 movementTopic.publish(hoveringMsg);
                 finish = ros::Time::now();
-                currentDistance = distanceFromTargetInCm(currentPosition, &StateActions::destinationCoordinate);
+                currentDistance = distanceFromTargetInCm(&currentPosition, &StateActions::destinationCoordinate);
                 double diff = finish.toSec() - start.toSec();
 
                 currentState = TARGET_REACHED;
-                ROS_INFO("TARGET REACHED (%f,%f)->(%f,%f)\n\tDistance from target: %.4f cm\n\tTravelling time: %f seconds\n", 
-                    currentPosition->x, currentPosition->y, StateActions::destinationCoordinate.x, StateActions::destinationCoordinate.y, currentDistance, diff);
+                ROS_INFO("TARGET REACHED (%.4f,%.4f)\n\tDistance from target: %.4f cm\n\tTravelling time: %f seconds\n", 
+                    currentPosition.x, currentPosition.y, currentDistance, diff);
                 		
                 ros::Duration(3).sleep();
             }
@@ -258,21 +251,27 @@ namespace StateActions
             
                     Kp = (signOfLeftSide == 1) ? (-1 * Kp) : Kp;
                     if ( signOfLeftSide == 1 ) ROS_INFO("Sign of Kp changed!");
+                    movementCtr = 0;
                 }
 
-                actualDistanceFromVec = getSignedDistanceFromPointToLine(rotationCentre, destinationCoordinate, *currentPosition, normalLengthOfST);	
-                currentDistance = distanceFromTargetInMeter(currentPosition, &StateActions::destinationCoordinate);
-                adjustDroneSpeed(currentDistance, actualDistanceFromVec);
-                
+                actualDistanceFromVec = getSignedDistanceFromPointToLine(rotationCentre, destinationCoordinate, currentPosition, normalLengthOfST);	
+                currentDistance = distanceFromTargetInMeter(&currentPosition, &StateActions::destinationCoordinate);
+                adjustDroneSpeed(currentDistance, actualDistanceFromVec);                
                 movementTopic.publish(moveForwardMsg);
-                ROS_INFO("\tmove to target (%f,%f)", currentPosition->x, currentPosition->y);
+
+                if (movementCtr % MOVEMENT_MODULO == 0)
+                {
+                    ROS_INFO("Move to target (%f,%f)", currentPosition.x, currentPosition.y);
+                    ROS_INFO("\tLinear.x: %.4f\n\tLinear.y: %.4f\n", moveForwardMsg.linear.x, moveForwardMsg.linear.y); 
+                }
+                movementCtr++;
             }
         }
         else
         {
             movementTopic.publish(hoveringMsg);
             currentState = EMERGENCY_LANDING;
-            ROS_FATAL("OUTSIDE THE CORRIDOR: (%.4f, %.4f)", currentPosition->x, currentPosition->y);
+            ROS_FATAL("OUTSIDE THE CORRIDOR: (%.4f, %.4f)", currentPosition.x, currentPosition.y);
         }
     }
 

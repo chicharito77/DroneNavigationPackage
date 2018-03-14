@@ -35,8 +35,7 @@ geometry_msgs::Point positionInBottomcamFrame;
 void odometryCallback(const nav_msgs::Odometry::ConstPtr& msg)
 {
 	tf::Quaternion quat;
-	tf::quaternionMsgToTF(msg->pose.pose.orientation, quat);
-	positionInBottomcamFrame = msg->pose.pose.position;		
+	tf::quaternionMsgToTF(msg->pose.pose.orientation, quat);		
 
 	switch (currentState)
 	{
@@ -46,18 +45,21 @@ void odometryCallback(const nav_msgs::Odometry::ConstPtr& msg)
 		break;
 
 		case HOVERING:
-			Hovering_actions(quat, &positionInBottomcamFrame);
+			Hovering_actions(quat);
 
 		break;
 
 		case MOVE_TO_TARGET:
-			MoveToTarget_actions(&positionInBottomcamFrame);
+			positionInBottomcamFrame.x = 0.0;
+			positionInBottomcamFrame.y = 0.0;
+			positionInBottomcamFrame.z = 0.0;
+			positionInBottomcamFrame = msg->pose.pose.position;
+			MoveToTarget_actions(positionInBottomcamFrame);
 			
 		break;
 
 		case TARGET_REACHED:
 			TargetReached_actions(&targetReached);
-
 			landTopic.publish( landMsg );
 			ROS_INFO("Drone landed successfully!\n");
 
