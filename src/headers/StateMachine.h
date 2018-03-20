@@ -18,8 +18,10 @@
 #define OUTPUT_SPEED_MAX                       0.1
 
 #define SIDESPEED_MAX                          0.1
+#define KD_COEFFICIENT                         0.1
+#define KD_TIME_CONSTANT                       0.066
 
-#define MOVEMENT_MODULO                       10
+#define MOVEMENT_MODULO                        6
 
 #include "geometry_msgs/Point.h"
 #include "ros/ros.h"
@@ -53,19 +55,18 @@ namespace StateActions
     geometry_msgs::Vector3 AB, BC;
 
     ros::Time start, finish;
-    double Kp;
+    double Kp, Kd;
+    double actualDistanceFromVec, previousDistanceFromVec;
     int signOfLeftSide = 0;
     double normalLengthOfST;
-    double actualDistanceFromVec;
 
     int movementCtr;
-
 
 
     void setMovementValues(double *theta_zero, double *theta, double *distance, 
                             geometry_msgs::Point *_destinationCoordinate, geometry_msgs::Point *_rotCenter,
                             geometry_msgs::Point *a, geometry_msgs::Point *b, geometry_msgs::Point *c,
-                            geometry_msgs::Vector3 *vec1, geometry_msgs::Vector3 *vec2, double *Kp_linear_y)
+                            geometry_msgs::Vector3 *vec1, geometry_msgs::Vector3 *vec2, double *proportionalMember, double *derivativeMember)
     {
         ThetaZero = *theta_zero;
         Theta = *theta;
@@ -80,7 +81,8 @@ namespace StateActions
         C = *c;
         AB = *vec1;
         BC = *vec2;
-        Kp = *Kp_linear_y;
+        Kp = *proportionalMember;
+        Kd = *derivativeMember;
     }
 
 
@@ -100,7 +102,7 @@ namespace StateActions
     }
 
 
-    void adjustDroneSpeed(double distanceRemained, double distFromVec=DBL_MIN)
+    void adjustDroneSpeed(double distanceRemained, double distFromVec=DBL_MIN, double prevDistFromVec=DBL_MIN)
     {
         float value;
         if (distanceRemained <= INPUT_DIST_MIN)
@@ -114,7 +116,7 @@ namespace StateActions
 		StateActions::moveForwardMsg.linear.x = value;
         if (distFromVec != DBL_MIN) 
         {
-            StateActions::moveForwardMsg.linear.y = Kp * distFromVec;
+            StateActions::moveForwardMsg.linear.y = (Kp * distFromVec) + ( Kd * ( distFromVec-prevDistFromVec ) / KD_TIME_CONSTANT );
         }
         else
         {
@@ -250,19 +252,23 @@ namespace StateActions
                     signOfLeftSide = (getSignedDistanceFromPointToLine(rotationCentre, destinationCoordinate, onTheLeft, normalLengthOfST) < 0) ? -1 : 1;
             
                     Kp = (signOfLeftSide == 1) ? (-1 * Kp) : Kp;
-                    if ( signOfLeftSide == 1 ) ROS_INFO("Sign of Kp changed!");
+                    //Kd = (signOfLeftSide == 1) ? (-1 * Kd) : Kd;
+                    if ( signOfLeftSide == 1 ) ROS_INFO("Sign of Kp and Kd changed!");
                     movementCtr = 0;
+                    actualDistanceFromVec = 0.0;
                 }
 
+                previousDistanceFromVec = actualDistanceFromVec;
                 actualDistanceFromVec = getSignedDistanceFromPointToLine(rotationCentre, destinationCoordinate, currentPosition, normalLengthOfST);	
                 currentDistance = distanceFromTargetInMeter(&currentPosition, &StateActions::destinationCoordinate);
-                adjustDroneSpeed(currentDistance, actualDistanceFromVec);                
+                adjustDroneSpeed(currentDistance, actualDistanceFromVec, previousDistanceFromVec);                
                 movementTopic.publish(moveForwardMsg);
 
                 if (movementCtr % MOVEMENT_MODULO == 0)
                 {
                     ROS_INFO("Move to target (%f,%f)", currentPosition.x, currentPosition.y);
-                    ROS_INFO("\tLinear.x: %.4f\n\tLinear.y: %.4f\n", moveForwardMsg.linear.x, moveForwardMsg.linear.y); 
+                    ROS_INFO("\tLinear.x: %.4f\n\tLinear.y: %.4f\n\tActual dist: %.4f\n\tPrevious dist: %.4f\n", moveForwardMsg.linear.x, moveForwardMsg.linear.y, 
+                                                                    actualDistanceFromVec, previousDistanceFromVec); 
                 }
                 movementCtr++;
             }

@@ -123,13 +123,14 @@ namespace DroneLogic
         corridorSide2 = vectorLength2D(BC);
 
         Kp = SIDESPEED_MAX / (corridorSide1/2.0);
+        Kd = Kp * KD_COEFFICIENT;
 
         //listázni aszámolás eredményeit, majd ezeket átmásolni statemachine-ba!!!
-        ROS_INFO("Travel corridor calculated!\n\tA(%.2f; %.2f)\tB(%.2f; %.2f)\n\tC(%.2f; %.2f)\tD(%.2f; %.2f)\n\tAB vector->(%.4f; %.4f)\n\tBC vector->(%.4f; %.4f)", 
+        ROS_INFO("Travel corridor calculated!\n\tA(%.2f, %.2f)\tB(%.2f, %.2f)\n\tC(%.2f, %.2f)\tD(%.2f, %.2f)\n\tAB vector->(%.4f; %.4f)\n\tBC vector->(%.4f; %.4f)", 
                     S_A.x, S_A.y, S_B.x, S_B.y, D_C.x, D_C.y, D_D.x, D_D.y,
                     AB.x, AB.y, BC.x, BC.y);
 
-        ROS_INFO("PID details\n\tKp_linear.y=%.4f\n\tStarting linear speed=%.4f\n", Kp, moveForwardMsg.linear.x);
+        ROS_INFO("PID details\n\tKp=%.4f\n\tKd=%.4f\n\tStarting linear speed=%.4f\n", Kp, Kd, moveForwardMsg.linear.x);
     }
 
 
@@ -203,8 +204,8 @@ namespace DroneLogic
     bool calculateDronePath(geometry_msgs::Point positionInDroneCoordinateSystem)
     {   
         bool result;
-        destinationCoordinate.x = 4.96;
-        destinationCoordinate.y = 2.94;
+        destinationCoordinate.x = 5.0;
+        destinationCoordinate.y = 2.98;
         destinationCoordinate.z = 1.0;
 
         droneCoordinate.x = B.x;
@@ -240,7 +241,7 @@ namespace DroneLogic
             createCorridor();
 
             setMovementValues(&droneOrientationInRad, &theta, &dist, &targetCoordinate, &startCoordinate,
-                                &S_A, &S_B, &D_C, &AB, &BC, &Kp);
+                                &S_A, &S_B, &D_C, &AB, &BC, &Kp, &Kd);
         }        
 
         return result;
