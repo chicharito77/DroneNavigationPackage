@@ -20,6 +20,7 @@
 #include "StateMachine.h"
 
 using namespace StateActions;
+
 using namespace std;
 
 namespace DroneLogic
@@ -204,8 +205,8 @@ namespace DroneLogic
     bool calculateDronePath(geometry_msgs::Point positionInDroneCoordinateSystem)
     {   
         bool result;
-        destinationCoordinate.x = 5.0;
-        destinationCoordinate.y = 2.98;
+        destinationCoordinate.x = 3.45;
+        destinationCoordinate.y = 2.94;
         destinationCoordinate.z = 1.0;
 
         droneCoordinate.x = B.x;

@@ -10,7 +10,7 @@
 #define EMERGENCY_LANDING                   0x06
 #define DRIFT_DURING_TURN                   0x07
 
-#define DRONE_HEDGE_ADDRESS					  10
+#define DRONE_HEDGE_ADDRESS					  12
 
 #define INPUT_DIST_MIN                         1.0
 #define INPUT_DIST_MAX                         3.5
@@ -21,7 +21,7 @@
 #define KD_COEFFICIENT                         0.1
 #define KD_TIME_CONSTANT                       0.066
 
-#define MOVEMENT_MODULO                        6
+#define MOVEMENT_MODULO                        8
 
 #include "geometry_msgs/Point.h"
 #include "ros/ros.h"
@@ -244,16 +244,22 @@ namespace StateActions
             {
                 if (signOfLeftSide == 0)
                 {
-                    geometry_msgs::Point onTheLeft;
-                    onTheLeft.x = rotationCentre.x - 1.0;
-                    onTheLeft.y = rotationCentre.y;
+                    //geometry_msgs::Point onTheLeft;
+                    //onTheLeft.x = rotationCentre.x - 1.0;
+                    //onTheLeft.y = rotationCentre.y;
+                    //A lesz az új testpoint: rengeteg esetben volt igaz,hogy az x koordináta -1-gyel csökkentve jobb oldalra esett...
+
+                    //update: nem kell tesztelni az irányultságot!!!!
             
                     normalLengthOfST = sqrt( pow(destinationCoordinate.x - rotationCentre.x, 2) + pow(destinationCoordinate.y - rotationCentre.y, 2) );		
-                    signOfLeftSide = (getSignedDistanceFromPointToLine(rotationCentre, destinationCoordinate, onTheLeft, normalLengthOfST) < 0) ? -1 : 1;
+                    //signOfLeftSide = (getSignedDistanceFromPointToLine(rotationCentre, destinationCoordinate, A, normalLengthOfST) < 0) ? -1 : 1;
             
-                    Kp = (signOfLeftSide == 1) ? (-1 * Kp) : Kp;
+                    //Kp = (signOfLeftSide == 1) ? (-1 * Kp) : Kp;
                     //Kd = (signOfLeftSide == 1) ? (-1 * Kd) : Kd;
-                    if ( signOfLeftSide == 1 ) ROS_INFO("Sign of Kp and Kd changed!");
+                    //if ( signOfLeftSide == 1 ) ROS_INFO("Sign of Kp and Kd changed!");
+
+                    signOfLeftSide++;
+                    
                     movementCtr = 0;
                     actualDistanceFromVec = 0.0;
                 }

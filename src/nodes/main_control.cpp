@@ -45,6 +45,14 @@ void odometryCallback(const nav_msgs::Odometry::ConstPtr& msg)
 		break;
 
 		case HOVERING:
+			if (calibrationDone)
+			{
+				positionInBottomcamFrame.x = 0.0;
+				positionInBottomcamFrame.y = 0.0;
+				positionInBottomcamFrame.z = 0.0;
+				positionInBottomcamFrame = msg->pose.pose.position;
+			}
+			
 			Hovering_actions(quat);
 
 		break;
