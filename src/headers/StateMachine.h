@@ -34,7 +34,7 @@
 namespace StateActions
 {
     geometry_msgs::Twist  turnMsg, turnMsg_2, hoveringMsg, calibrationMsg, moveForwardMsg;
-
+    ros::Time start, finish;
     ros::Publisher movementTopic;
     ros::ServiceClient positionUpdater;
  
@@ -49,17 +49,15 @@ namespace StateActions
     double ThetaZero, Theta, Distance;
     double currentDistance;
 
-    //map a.k.a rectangle data
+    //map and PD control data
     geometry_msgs::Point A, B, C;
     geometry_msgs::Vector3 AB, BC;
-
-    ros::Time start, finish;
     double Kp, Kd;
     double actualDistanceFromVec, previousDistanceFromVec;
-    int signOfLeftSide = 0;
     double normalLengthOfST;
 
     int movementCtr;
+    int dummyCtr = 0;
 
 
     void setMovementValues(double *theta_zero, double *theta, double *distance, 
@@ -129,7 +127,6 @@ namespace StateActions
         movementTopic.publish(hoveringMsg);
     }
 
-
     void Hovering_actions(tf::Quaternion quat)
     {
         tf::Matrix3x3(quat).getRPY(roll_starting,pitch_starting,yaw_starting);
@@ -143,11 +140,8 @@ namespace StateActions
         }
     }
 
-
     void TurnLeft_actions(tf::Quaternion quat)
-    {
-        //yaw_prev = (*counter == 0) ? yaw_starting : yaw_current;
-        //*counter++;	        
+    {     
         tf::Matrix3x3(quat).getRPY(roll_starting, pitch_starting, yaw_current);
 
         if (yaw_current == 0.000000)	
@@ -176,17 +170,12 @@ namespace StateActions
         else
         {
             movementTopic.publish(turnMsg_2);
-            //ROS_INFO("\tcurrent: %f", yaw_current);
         }
-
         yaw_prev = yaw_current;
     }
 
-    
     void TurnRight_actions(tf::Quaternion quat)
-    {
-        //yaw_prev = (*counter == 0) ? yaw_starting : yaw_current;
-        //*counter++;        
+    {     
         tf::Matrix3x3(quat).getRPY(roll_current, pitch_current, yaw_current);
 
         if (yaw_current == 0.000000)	
@@ -215,9 +204,7 @@ namespace StateActions
         else
         {
             movementTopic.publish(turnMsg);
-            //ROS_INFO("\tcurrent: %f", yaw_current);
         }
-
         yaw_prev = yaw_current;
     }
 
@@ -226,35 +213,31 @@ namespace StateActions
     {
         if ( isPointInsideCorridor(currentPosition, AB, BC, A, B, C) )
         {
-            if ( isDroneInRadius(&currentPosition, &StateActions::destinationCoordinate) )
+            if ( isDroneNearTarget(&currentPosition, &StateActions::destinationCoordinate) )
             {
                 movementTopic.publish(hoveringMsg);
                 finish = ros::Time::now();
-                currentDistance = distanceFromTargetInCm(&currentPosition, &StateActions::destinationCoordinate);
-                double diff = finish.toSec() - start.toSec();
+                currentDistance = distanceInCentimeter(&currentPosition, &StateActions::destinationCoordinate);
+                double duration = finish.toSec() - start.toSec();
 
                 currentState = TARGET_REACHED;
                 ROS_INFO("TARGET REACHED (%.4f,%.4f)\n\tDistance from target: %.4f cm\n\tTravelling time: %f seconds\n", 
-                    currentPosition.x, currentPosition.y, currentDistance, diff);
-                		
+                    currentPosition.x, currentPosition.y, currentDistance, duration);                		
                 ros::Duration(3).sleep();
             }
             else
             {
-                if (signOfLeftSide == 0)
+                if (dummyCtr == 0)
                 {
-                    //update: nem kell tesztelni a vektor irányultságot!!!
-                    normalLengthOfST = sqrt( pow(destinationCoordinate.x - rotationCentre.x, 2) + pow(destinationCoordinate.y - rotationCentre.y, 2) );		
-
-                    signOfLeftSide++;
-                    
+                    normalLengthOfST = distanceInMeter(&destinationCoordinate, &rotationCentre);	
                     movementCtr = 0;
                     actualDistanceFromVec = 0.0;
+                    dummyCtr++;
                 }
-
                 previousDistanceFromVec = actualDistanceFromVec;
                 actualDistanceFromVec = getSignedDistanceFromPointToLine(rotationCentre, destinationCoordinate, currentPosition, normalLengthOfST);	
-                currentDistance = distanceFromTargetInMeter(&currentPosition, &StateActions::destinationCoordinate);
+                currentDistance = distanceInMeter(&currentPosition, &StateActions::destinationCoordinate);
+
                 adjustDroneSpeed(currentDistance, actualDistanceFromVec, previousDistanceFromVec);                
                 movementTopic.publish(moveForwardMsg);
 
@@ -275,7 +258,6 @@ namespace StateActions
         }
     }
 
-
     void TargetReached_actions(bool *targetReached)
     {
         turnToTarget = false;
@@ -285,5 +267,4 @@ namespace StateActions
 
 }
 
-/* Your function statement here */
 #endif

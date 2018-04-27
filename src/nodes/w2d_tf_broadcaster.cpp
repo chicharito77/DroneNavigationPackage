@@ -1,14 +1,15 @@
-#define QUEUE_SIZE                  100
+#define QUEUE_SIZE                                                       100
 #define INCOMING_TOPIC_NAME         "/ControlCenter/set_transform_parameters"
 
-#include <ros/ros.h>
-#include <tf/transform_broadcaster.h>
-
-#include "DroneNavigationPackage/TransformParameters.h"
 #include <iostream>
+
+#include "ros/ros.h"
+#include "tf/transform_broadcaster.h"
+#include "DroneNavigationPackage/TransformParameters.h"
 
 int counter;
 double X_w, Y_w, Z_w, rotationInRad;
+
 tf::Quaternion rotationQuaternion;
 ros::Subscriber operationTopic;
 
@@ -23,7 +24,8 @@ void setTransformationCallback(const DroneNavigationPackage::TransformParameters
     counter = 0;
 }
 
-void initialize(ros::NodeHandle *node)
+
+void initializeNode(ros::NodeHandle *node)
 {
     Z_w = 0.0;
     X_w = 0.0;
@@ -45,7 +47,7 @@ int main(int argc, char** argv)
     ros::Rate r(15);
     tf::TransformBroadcaster broadcaster;
 
-    initialize(&node);  
+    initializeNode(&node);  
 
     while(ros::ok())
     {
@@ -60,7 +62,7 @@ int main(int argc, char** argv)
             tf::StampedTransform(
                             tf::Transform(rotationQuaternion, tf::Vector3(X_w, Y_w, Z_w)),
                             ros::Time::now(),"W", "odom"));
-                                            //parent, child
+                                        //parent, child
         ros::spinOnce();
         r.sleep();
     }

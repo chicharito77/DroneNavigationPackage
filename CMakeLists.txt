@@ -120,8 +120,7 @@ include_directories(
 	include ${catkin_INCLUDE_DIRS}
 )
 
-add_executable(ControlCenter src/nodes/main_control.cpp)
-			
+add_executable(ControlCenter src/nodes/main_control.cpp)	
 target_link_libraries(ControlCenter ${catkin_LIBRARIES})
 add_dependencies(ControlCenter DroneNavigationPackage_generate_messages_cpp)
 
@@ -131,6 +130,7 @@ add_dependencies(LocationProvider DroneNavigationPackage_generate_messages_cpp)
 
 add_executable(W2D_tf_broadcaster src/nodes/w2d_tf_broadcaster.cpp)
 target_link_libraries(W2D_tf_broadcaster ${catkin_LIBRARIES})
+add_dependencies(W2D_tf_broadcaster DroneNavigationPackage_generate_messages_cpp)
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}

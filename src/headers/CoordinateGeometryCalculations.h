@@ -37,13 +37,13 @@ double scalarProduct2D(geometry_msgs::Vector3 &a, geometry_msgs::Vector3 &b)
 }
 
 
-geometry_msgs::Vector3 getPerpendicularVector(geometry_msgs::Vector3 &base, geometry_msgs::Point &baseEnd, geometry_msgs::Vector3 &resultVec,
-											  geometry_msgs::Point &C, geometry_msgs::Point &D)
+void getPerpendicularVector(geometry_msgs::Vector3 &baseVector, geometry_msgs::Point &baseEndPoint, 
+							geometry_msgs::Point &C, geometry_msgs::Point &D, geometry_msgs::Vector3 &resultVec)
 {
-	geometry_msgs::Vector3 BC = createVector(baseEnd, C);
-	geometry_msgs::Vector3 BD = createVector(baseEnd, D);
-	double scalar1 = fabs(scalarProduct2D(base, BC));
-	double scalar2 = fabs(scalarProduct2D(base, BD));
+	geometry_msgs::Vector3 BC = createVector(baseEndPoint, C);
+	geometry_msgs::Vector3 BD = createVector(baseEndPoint, D);
+	double scalar1 = fabs(scalarProduct2D(baseVector, BC));
+	double scalar2 = fabs(scalarProduct2D(baseVector, BD));
 
 	resultVec = (scalar1 < scalar2) ? BC : BD;
 }
@@ -56,10 +56,9 @@ double vectorLength2D(geometry_msgs::Vector3 &vec)
 
 
 //----------------------------------------------map operations---------------------------------------------------
-double getSignedDistanceFromPointToLine(geometry_msgs::Point &startPoint, geometry_msgs::Point &endPoint, geometry_msgs::Point &testPoint, double &normalLenghtOfVec)
+
+double getSignedDistanceFromPointToLine(geometry_msgs::Point &startPoint, geometry_msgs::Point &endPoint, geometry_msgs::Point &testPoint, double normalLenghtOfVec)
 {
-	//int value = (testPoint.x - startPoint.x) * (endPoint.y - startPoint.y) - (testPoint.y - startPoint.y) * (endPoint.x - startPoint.x);
-	//double normalLength = sqrt( pow(endPoint.x - startPoint.x, 2) + pow(endPoint.y - startPoint.y, 2) );
 	double value = (double)((testPoint.x - startPoint.x) * (endPoint.y - startPoint.y) - (testPoint.y - startPoint.y) * (endPoint.x - startPoint.x)) / normalLenghtOfVec;	
 	return value;
 }
@@ -82,43 +81,42 @@ bool isPointInsideCorridor(geometry_msgs::Point &testPoint, geometry_msgs::Vecto
 
 int intersectionPointsOfCircles(geometry_msgs::Point centre1, double radius1, 
 								geometry_msgs::Point centre2, double radius2, 
-								geometry_msgs::Point *intersectionPoint1, geometry_msgs::Point *intersectionPoint2)
+								geometry_msgs::Point &intersectionPoint1, geometry_msgs::Point &intersectionPoint2)
 {
-	Circle c1(centre1, radius1);
-	Circle c2(centre2, radius2);
+	Circle circle1(centre1, radius1);
+	Circle circle2(centre2, radius2);
 
 	double a, dx, dy, d, h, rx, ry;
 	double x2, y2;
 
-	dx = c2.centre.x - c1.centre.x;
-	dy = c2.centre.y - c1.centre.y;
+	dx = circle2.centre.x - circle1.centre.x;
+	dy = circle2.centre.y - circle1.centre.y;
 	d = sqrt( pow(dy, 2) + pow(dx, 2) );
 
-	if (d > (c1.radius + c2.radius))
+	if (d > (circle1.radius + circle2.radius))
 	{
 		return 0;
 	}
-	if (d < fabs(c1.radius - c2.radius))
+	if (d < fabs(circle1.radius - circle2.radius))
 	{
 		return 0;
 	}
 
-	a = ( pow(c1.radius, 2) - pow(c2.radius, 2) + pow(d, 2) ) / (2.0 * d) ;
-	x2 = c1.centre.x + (dx * a/d);
-	y2 = c1.centre.y + (dy * a/d);
-	h = sqrt( pow(c1.radius, 2) - pow(a, 2) );
+	a = ( pow(circle1.radius, 2) - pow(circle2.radius, 2) + pow(d, 2) ) / (2.0 * d) ;
+	x2 = circle1.centre.x + (dx * a/d);
+	y2 = circle1.centre.y + (dy * a/d);
+	h = sqrt( pow(circle1.radius, 2) - pow(a, 2) );
 	rx = -dy * (h/d);
 	ry = dx * (h/d);
 
-	intersectionPoint1->x = x2 + rx;
-	intersectionPoint1->y = y2 + ry;
+	intersectionPoint1.x = x2 + rx;
+	intersectionPoint1.y = y2 + ry;
 
-	intersectionPoint2->x  = x2 - rx;
-	intersectionPoint2->y = y2 - ry;
+	intersectionPoint2.x  = x2 - rx;
+	intersectionPoint2.y = y2 - ry;
 
 	return 2;
 }
-
 
 //------------------------------------------general operations---------------------------------------------------
 
@@ -128,7 +126,7 @@ bool isRadianInZeroInterval(double *value)
 };
 
 
-bool isDroneInRadius(geometry_msgs::Point *dronePosition, geometry_msgs::Point *destPosition)
+bool isDroneNearTarget(geometry_msgs::Point *dronePosition, geometry_msgs::Point *destPosition)
 {
 	if ( pow(dronePosition->x - destPosition->x, 2) + pow(dronePosition->y - destPosition->y, 2) <= pow(TARGET_RADIUS, 2) )
 		return true;
@@ -137,18 +135,22 @@ bool isDroneInRadius(geometry_msgs::Point *dronePosition, geometry_msgs::Point *
 };
 
 
-double distanceFromTargetInMeter(geometry_msgs::Point *dronePosition, geometry_msgs::Point *destPosition)
+double distanceInMeter(geometry_msgs::Point *A, geometry_msgs::Point *B)
 {
-	double distanceInMeter = sqrt(pow(dronePosition->x - destPosition->x, 2) + pow(dronePosition->y - destPosition->y, 2));
-	return (distanceInMeter);
+	return ( sqrt( pow(A->x - B->x, 2) + pow(A->y - B->y, 2) ) );
 };
 
 
-double distanceFromTargetInCm(geometry_msgs::Point *dronePosition, geometry_msgs::Point *destPosition)
+double distanceInCentimeter(geometry_msgs::Point *A, geometry_msgs::Point *B)
 {
-	double distanceInMeter = sqrt(pow(dronePosition->x - destPosition->x, 2) + pow(dronePosition->y - destPosition->y, 2));
-	return (distanceInMeter*100.0);
+	return ( distanceInMeter(A, B)*100.0 );
 };
+
+
+double getHypotenuseOfRightangledTriangle(double sideA, double sideB)
+{
+	return ( sqrt(pow(sideA, 2) + pow(sideB, 2)) );
+}
 
 
 double radToDegree(double angleInRad)
@@ -162,5 +164,4 @@ double degreeToRad(double angleInDegree)
 	return (angleInDegree * (M_PI/180.0));
 };
 
-/* Your function statement here */
 #endif

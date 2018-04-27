@@ -1,16 +1,16 @@
-This is a thesis project (title: Robot control based on ROS) at University of Pannonia.
+This is my thesis project (title: Quadcopter control based on ROS) at University of Pannonia.
 Used technologies:
-    - Oracle VM VirtualBox (Windows 10 host)
+    - Oracle VM VirtualBox (on Windows 10 host)
     - Ubuntu 14.04 guest OS
     - ROS Indigo Igloo
     - Marvelmind indoor localization system
     - Parrot ARDrone 2.0
     
 The goal of my thesis work is to control an ArDrone 2.0 with the help of an ultrasonic indoor localization system. 
-This navigation system is developed by Marvelmind Robotics, and the localization and navigation of the drone is based on it. 
+This navigation system is developed by Marvelmind Robotics, and the localization of the drone is based on it. 
 There is a „moving” ultrasonic beacon placed on the hull of the drone. In the testing environment there are at least 3 stationary beacons
 on the wall or ceiling. Those devices forms a map: the environment is measured by ultrasonic signals. 
-The drone moves in a 2D coordinate system (height of the milestones is ignored). 
+The drone moves in a 2D coordinate system (height is ignored). 
 
 If you have any suggestions and remark, please contact me.
 
@@ -55,9 +55,14 @@ Additional commands:
 
         
         
-v1.1: A travelling corridor has been defined around the travel-vector. The main goal of this area is to detect if the drone is left the "restricted flying area". In this case, the drone is forced to land. This feature is the basis of a PID control.
+v1.1: A travelling corridor has been defined around the travel-vector. The main goal of this area is to detect if the drone leave the "restricted flying area". In this case, the drone is forced to land (movement stopped, and after it the drone is landing). This feature is the basis of a PID control.
 
 v2.0: The DroneNavigationPackage is extended with a PD algorithm (which is discrete in time). The algorithm controls the travelling of the drone. The goal is 
-to provide a solution when the quadrocopter travels in the area of the ideal motion vector (ST vector from starting position to target position). 
+to provide a solution when the quadcopter travels as near to the ideal motion vector (ST vector from starting position to target position) as possible. 
+        Calculation of the coefficients:
+                Kp = SIDESPEED_MAX / (corridorSide1/2.0); where corridorSide1 is the shorter side of the corridor, 
+                                                          and SIDESPEED_MAX is the maximal horizontal movement speed value
 
+                Kd = Kp * KD_COEFFICIENT; where KD_COEFFICIENT is randomly selected.
 
+v2.1: Code refactor before thesis submission

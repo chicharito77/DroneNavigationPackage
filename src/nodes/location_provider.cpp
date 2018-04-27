@@ -1,6 +1,6 @@
-#define NUMBER_OF_BEACONS              1
-#define QUEUE_SIZE_1				1000
-#define STARTUP_TIMEOUT               10
+#define NUMBER_OF_BEACONS                                           1
+#define QUEUE_SIZE_1				                             1000
+#define STARTUP_TIMEOUT                                            10
 
 #define MM_TOPICNAME                                    "/hedge_pos_a"
 #define SERVICENAME         "/LocationProvider/provide_hedge_location"
@@ -23,11 +23,30 @@ ros::Subscriber locationReceiver;
 ros::ServiceServer serviceProvider;
 
 std::map<int, geometry_msgs::Point> receivedLocations;
+int requestCounter;
+
+
+bool isTopicAvailable(const string& topic)
+{
+    ros::master::V_TopicInfo topic_infos;
+    ros::master::getTopics(topic_infos);
+
+    for (ros::master::V_TopicInfo::iterator it = topic_infos.begin() ; it != topic_infos.end(); it++) 
+    {
+        const ros::master::TopicInfo& info = *it;
+        if(info.name.compare(topic)==0)
+        {
+            return true;
+        }
+    }
+    return false;
+}
 
 
 bool provide_location(DroneNavigationPackage::HedgePositions::Request &req,
                       DroneNavigationPackage::HedgePositions::Response &res  )
 {
+    requestCounter++;
     int i=0;
     map<int, geometry_msgs::Point>::iterator it;
 
@@ -42,6 +61,7 @@ bool provide_location(DroneNavigationPackage::HedgePositions::Request &req,
             res.positions[i].y_m = pi.y;       
             res.positions[i].z_m = pi.z;
             res.positions[i].flags = 1;
+            ROS_INFO("\t%d. position request for hedge_%d was successful!\n", requestCounter, req.addresses[i]);
         }
         else
         {
@@ -49,7 +69,8 @@ bool provide_location(DroneNavigationPackage::HedgePositions::Request &req,
             res.positions[i].x_m = 0.0;
             res.positions[i].y_m = 0.0;
             res.positions[i].z_m = 0.0;
-            res.positions[i].flags = 0;    
+            res.positions[i].flags = 0;  
+            ROS_INFO("\t%d. position request failed: hedge_%d unknown!\n", requestCounter, req.addresses[i]);  
         }
     }
 
@@ -69,38 +90,26 @@ void locationReceivedCallback(const marvelmind_nav::hedge_pos_a::ConstPtr& msg)
         
         if (it != receivedLocations.end())
         {
-            //address found
             receivedLocations[msg->address] = newPos;
         }
         else
         {
-            //address not found
             receivedLocations.insert(std::pair<int, geometry_msgs::Point>( msg->address, newPos ));
         }
     }
-}
-
-
-bool isTopicAvailable(const string& topic)
-{
-    ros::master::V_TopicInfo topic_infos;
-    ros::master::getTopics(topic_infos);
-
-    for (ros::master::V_TopicInfo::iterator it = topic_infos.begin() ; it != topic_infos.end(); it++) 
+    else
     {
-        const ros::master::TopicInfo& info = *it;
-        if(info.name.compare(topic)==0)
-        {
-            return true;
-        }
+        ROS_INFO("***Not valid data received, storing process cancelled!\n");
     }
-    return false;
 }
+
 
 void startNode(ros::NodeHandle* node)
 {
     time_t start, current;
     start = time(NULL);
+    int counter = 0;
+    requestCounter = 0;
     
     do
     {
@@ -108,16 +117,24 @@ void startNode(ros::NodeHandle* node)
         {
             serviceProvider = node->advertiseService(SERVICENAME, provide_location);
             locationReceiver = node->subscribe(MM_TOPICNAME, QUEUE_SIZE_1, locationReceivedCallback);
-
-            ROS_INFO("Service is ready to call ...");
+            ROS_INFO("Service is ready to call ...\n");
             ros::spin();
             break;
         }
+        else
+        {
+            if (counter==0)
+            {
+                ROS_INFO("Waiting 30 seconds for '%s' topic to be available ...\n", MM_TOPICNAME);
+                counter++;
+            }
+        }
         current = time(NULL);
-    }while(difftime(current, start) < STARTUP_TIMEOUT);
 
-    ROS_ERROR("TIMEOUT: Node doesn't start because dependency topic does not exist!");
+    }while( difftime(current, start) < STARTUP_TIMEOUT );
+    ROS_ERROR("TIMEOUT: Node is not starting because dependency topic does not exist!\n");
 }
+
 
 
 int main(int argc, char **argv)

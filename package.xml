@@ -2,10 +2,10 @@
 <package>
 
   <name>DroneNavigationPackage</name>
-  <version>1.0.0</version>
+  <version>2.1.0</version>
   <description>The DroneNavigationPackage package</description>
 
-  <maintainer email="nemeth.istvan1892@gmail.com">Steve</maintainer>
+  <maintainer email="nemeth.istvan1892@gmail.com">HLAR8M</maintainer>
   <license>TODO</license>
   
   <buildtool_depend>catkin</buildtool_depend>
