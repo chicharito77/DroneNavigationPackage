@@ -57,4 +57,7 @@ Additional commands:
         
 v1.1: A travelling corridor has been defined around the travel-vector. The main goal of this area is to detect if the drone is left the "restricted flying area". In this case, the drone is forced to land. This feature is the basis of a PID control.
 
+v2.0: The DroneNavigationPackage is extended with a PD algorithm (which is discrete in time). The algorithm controls the travelling of the drone. The goal is 
+to provide a solution when the quadrocopter travels in the area of the ideal motion vector (ST vector from starting position to target position). 
+
 

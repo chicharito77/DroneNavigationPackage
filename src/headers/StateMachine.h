@@ -8,7 +8,6 @@
 #define MOVE_TO_TARGET						0x04
 #define TARGET_REACHED						0x05
 #define EMERGENCY_LANDING                   0x06
-#define DRIFT_DURING_TURN                   0x07
 
 #define DRONE_HEDGE_ADDRESS					  12
 
@@ -244,19 +243,8 @@ namespace StateActions
             {
                 if (signOfLeftSide == 0)
                 {
-                    //geometry_msgs::Point onTheLeft;
-                    //onTheLeft.x = rotationCentre.x - 1.0;
-                    //onTheLeft.y = rotationCentre.y;
-                    //A lesz az új testpoint: rengeteg esetben volt igaz,hogy az x koordináta -1-gyel csökkentve jobb oldalra esett...
-
-                    //update: nem kell tesztelni az irányultságot!!!!
-            
+                    //update: nem kell tesztelni a vektor irányultságot!!!
                     normalLengthOfST = sqrt( pow(destinationCoordinate.x - rotationCentre.x, 2) + pow(destinationCoordinate.y - rotationCentre.y, 2) );		
-                    //signOfLeftSide = (getSignedDistanceFromPointToLine(rotationCentre, destinationCoordinate, A, normalLengthOfST) < 0) ? -1 : 1;
-            
-                    //Kp = (signOfLeftSide == 1) ? (-1 * Kp) : Kp;
-                    //Kd = (signOfLeftSide == 1) ? (-1 * Kd) : Kd;
-                    //if ( signOfLeftSide == 1 ) ROS_INFO("Sign of Kp and Kd changed!");
 
                     signOfLeftSide++;
                     

@@ -70,6 +70,47 @@ namespace DroneLogic
     }
 
     
+    void setCoordinatesForTest(geometry_msgs::Point &takeoffPoint)
+    {
+        destinationCoordinate.x = 1.03;
+        destinationCoordinate.y = 3.37;
+        destinationCoordinate.z = 1.0;
+
+        //1st case
+        A.x = -0.19;
+        A.y = 0.63;
+        A.z = 0.0;
+        B.x = -0.29;
+        B.y = 0.35;
+        B.z = 0.0;
+        takeoffPoint.x = A.x;
+        takeoffPoint.y = A.y;
+        takeoffPoint.z = A.z;
+
+        //2nd case
+        /*A.x = 1.09
+        A.y = 0.58;
+        A.z = 0.0;
+        B.x = 1.3;
+        B.y = 0.25;
+        B.z = 0.0;
+        takeoffPoint.x = A.x;
+        takeoffPoint.y = A.y;
+        takeoffPoint.z = A.z;*/
+
+        //3rd case
+        /*A.x = -0.44;
+        A.y = 1.52;
+        A.z = 0.0;
+        B.x = -0.6;
+        B.y = 1.205;
+        B.z = 0.0;
+        takeoffPoint.x = A.x;
+        takeoffPoint.y = A.y;
+        takeoffPoint.z = A.z;*/
+    }
+
+    
     void createCorridor()
     {
         double R_diagonal = sqrt( pow(dist_2,2) + pow(EPSILON_RADIUS_FROM_TARGET, 2) );
@@ -176,7 +217,7 @@ namespace DroneLogic
 
     void calculateOrientationOfDrone(geometry_msgs::Point *offset, ros::Publisher *w2dTopic)
     {
-        getPositionOfDrone(&A);
+        //getPositionOfDrone(&A);
         ROS_INFO("\tPoint A measured! (%f, %f)", A.x, A.y);
 
         movementTopic.publish(calibrationMsg);
@@ -184,7 +225,7 @@ namespace DroneLogic
         movementTopic.publish(hoveringMsg);
         ros::Duration(6).sleep();
 
-        getPositionOfDrone(&B);
+        //getPositionOfDrone(&B);
         ROS_INFO("\tPoint B measured! (%f, %f)", B.x, B.y);	        
         droneOrientationInRad = atan2( (A.y - B.y), (A.x - B.x) );
         dcsOrientationInRad = droneOrientationInRad - degreeToRad(90.0);
@@ -205,9 +246,6 @@ namespace DroneLogic
     bool calculateDronePath(geometry_msgs::Point positionInDroneCoordinateSystem)
     {   
         bool result;
-        destinationCoordinate.x = 3.45;
-        destinationCoordinate.y = 2.94;
-        destinationCoordinate.z = 1.0;
 
         droneCoordinate.x = B.x;
         droneCoordinate.y = B.y;

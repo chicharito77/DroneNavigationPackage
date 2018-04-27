@@ -93,16 +93,6 @@ void odometryCallback(const nav_msgs::Odometry::ConstPtr& msg)
 			ros::shutdown();
 
 		break;
-
-		case DRIFT_DURING_TURN:
-			landTopic.publish( landMsg );
-			running = false;
-			ROS_FATAL("Drone landing requested due to drifting during turning!");
-			
-			ros::shutdown();
-
-		break;
-
 	}
 }
 
@@ -123,7 +113,8 @@ void interventionCallback(const DroneNavigationPackage::Intervention::ConstPtr& 
 {
 	if (running == false && msg->READY_TO_START == true)
 	{
-		DroneLogic::getPositionOfDrone(&positionBeforeTakeoff);
+		//DroneLogic::getPositionOfDrone(&positionBeforeTakeoff);
+		DroneLogic::setCoordinatesForTest(positionBeforeTakeoff);
         ros::Duration(3).sleep();
 		ROS_INFO("Initialization point in {W}: (%.2f, %.2f)\n", positionBeforeTakeoff.x, positionBeforeTakeoff.y);
 		takeoffTopic.publish( takeoffMsg );
