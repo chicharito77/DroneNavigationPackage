@@ -1,8 +1,8 @@
 #ifndef COORDINATEGEOMETRYCALCULATIONS_H_INCLUDE
 #define COORDINATEGEOMETRYCALCULATIONS_H_INCLUDE
  
-#define EPSILON_RADIUS_FROM_TARGET			 0.6
-#define TARGET_RADIUS						 0.25
+#define RADIUS_FROM_TARGET			 	     0.6
+#define EPSILON_RADIUS						 0.25
 
 #include "math.h"
 #include "geometry_msgs/Point.h"
@@ -53,7 +53,6 @@ double vectorLength2D(geometry_msgs::Vector3 &vec)
 {
 	return ( sqrt( pow(vec.x, 2) + pow(vec.y, 2) ) );
 }
-
 
 //----------------------------------------------map operations---------------------------------------------------
 
@@ -128,7 +127,7 @@ bool isRadianInZeroInterval(double *value)
 
 bool isDroneNearTarget(geometry_msgs::Point *dronePosition, geometry_msgs::Point *destPosition)
 {
-	if ( pow(dronePosition->x - destPosition->x, 2) + pow(dronePosition->y - destPosition->y, 2) <= pow(TARGET_RADIUS, 2) )
+	if ( pow(dronePosition->x - destPosition->x, 2) + pow(dronePosition->y - destPosition->y, 2) <= pow(EPSILON_RADIUS, 2) )
 		return true;
 
 	return false;

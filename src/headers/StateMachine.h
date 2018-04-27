@@ -1,7 +1,7 @@
 #ifndef STATEMACHINE_H_INCLUDE
 #define STATEMACHINE_H_INCLUDE
 
-#define START								0x00
+#define START								0x00    //states of the statemachine
 #define HOVERING							0x01
 #define TURN_RIGHT							0x02
 #define TURN_LEFT							0x03
@@ -11,16 +11,16 @@
 
 #define DRONE_HEDGE_ADDRESS					  12
 
-#define INPUT_DIST_MIN                         1.0
+#define INPUT_DIST_MIN                         1.0  //macros for the linear velocity profile
 #define INPUT_DIST_MAX                         3.5
 #define OUTPUT_SPEED_MIN                       0.02
 #define OUTPUT_SPEED_MAX                       0.1
 
-#define SIDESPEED_MAX                          0.1
+#define SIDESPEED_MAX                          0.1  //macros for the PD control
 #define KD_COEFFICIENT                         0.1
 #define KD_TIME_CONSTANT                       0.066
 
-#define MOVEMENT_MODULO                        8
+#define LOGGING_MODULO                         8    //macro for the logging
 
 #include "geometry_msgs/Point.h"
 #include "ros/ros.h"
@@ -57,7 +57,7 @@ namespace StateActions
     double normalLengthOfST;
 
     int movementCtr;
-    int dummyCtr = 0;
+    int helperCtr = 0;
 
 
     void setMovementValues(double *theta_zero, double *theta, double *distance, 
@@ -227,12 +227,12 @@ namespace StateActions
             }
             else
             {
-                if (dummyCtr == 0)
+                if (helperCtr == 0)
                 {
                     normalLengthOfST = distanceInMeter(&destinationCoordinate, &rotationCentre);	
                     movementCtr = 0;
                     actualDistanceFromVec = 0.0;
-                    dummyCtr++;
+                    helperCtr++;
                 }
                 previousDistanceFromVec = actualDistanceFromVec;
                 actualDistanceFromVec = getSignedDistanceFromPointToLine(rotationCentre, destinationCoordinate, currentPosition, normalLengthOfST);	
@@ -241,7 +241,7 @@ namespace StateActions
                 adjustDroneSpeed(currentDistance, actualDistanceFromVec, previousDistanceFromVec);                
                 movementTopic.publish(moveForwardMsg);
 
-                if (movementCtr % MOVEMENT_MODULO == 0)
+                if (movementCtr % LOGGING_MODULO == 0)
                 {
                     ROS_INFO("Move to target (%f,%f)", currentPosition.x, currentPosition.y);
                     ROS_INFO("\tLinear.x: %.4f\n\tLinear.y: %.4f\n\tActual dist: %.4f\n\tPrevious dist: %.4f\n", moveForwardMsg.linear.x, moveForwardMsg.linear.y, 

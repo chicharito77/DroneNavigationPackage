@@ -1,13 +1,14 @@
 #ifndef DRONELOGIC_H_INCLUDE
 #define DRONELOGIC_H_INCLUDE
 
-#define WORLD_TF_ID                    "/W"
-#define ODOM_TF_ID                     "/odom"
-#define BASE_LINK_TF_ID                "/ardrone_base_link"
+#define WORLD_TF_ID                                        "/W"
+#define ODOM_TF_ID                                      "/odom"
+#define BASE_LINK_TF_ID                    "/ardrone_base_link"
 #define BASE_FRONTCAM_TF_ID            "/ardrone_base_frontcam"
-#define BASE_BOTTOMCAM_TF_ID           "/ardrone_base_bottomcam"
-#define RATIO_LOW                       0.68
-#define RATIO_UP                        0.72
+#define BASE_BOTTOMCAM_TF_ID          "/ardrone_base_bottomcam"
+
+#define RATIO_LOW                                            0.68    //for bisection method
+#define RATIO_UP                                             0.72    //for bisection method
 
 #include "ros/ros.h"
 #include <geometry_msgs/PointStamped.h>
@@ -70,7 +71,7 @@ namespace DroneLogic
     
     void createCorridor()
     {
-        double R_diagonal = getHypotenuseOfRightangledTriangle(distInDCS, EPSILON_RADIUS_FROM_TARGET);
+        double R_diagonal = getHypotenuseOfRightangledTriangle(distInDCS, RADIUS_FROM_TARGET);
 
         //variables for bisection method
         geometry_msgs::Point helperPoint;
@@ -82,18 +83,18 @@ namespace DroneLogic
         int iterationStep = 0;
         
         tangentOfDS= atan2( startCoordinate.y - targetCoordinate.y, startCoordinate.x - targetCoordinate.x );
-        helperPoint.x = startCoordinate.x + EPSILON_RADIUS_FROM_TARGET*cos(tangentOfDS);
-        helperPoint.y = startCoordinate.y + EPSILON_RADIUS_FROM_TARGET*sin(tangentOfDS);
-        R_increment = EPSILON_RADIUS_FROM_TARGET / 2.0;
+        helperPoint.x = startCoordinate.x + RADIUS_FROM_TARGET*cos(tangentOfDS);
+        helperPoint.y = startCoordinate.y + RADIUS_FROM_TARGET*sin(tangentOfDS);
+        R_increment = RADIUS_FROM_TARGET / 2.0;
 
         do
         {
             iterationStep++;            
-            intersectionPointsOfCircles(startCoordinate, EPSILON_RADIUS_FROM_TARGET,
+            intersectionPointsOfCircles(startCoordinate, RADIUS_FROM_TARGET,
                                     targetCoordinate, R_diagonal, S_A, S_B);
 
             lengthOfAB = distanceInMeter(&S_A, &S_B);
-            ratio = EPSILON_RADIUS_FROM_TARGET / lengthOfAB;
+            ratio = RADIUS_FROM_TARGET / lengthOfAB;
             
             if ( !(ratio >= RATIO_LOW && ratio <= RATIO_UP) )
             {
@@ -112,7 +113,7 @@ namespace DroneLogic
 
         ROS_INFO("R_diag found in %d. iteration (%.4f -> %.4f)", iterationStep, R_orig, R_diagonal);
         intersectionPointsOfCircles(startCoordinate, R_diagonal,
-                                    targetCoordinate, EPSILON_RADIUS_FROM_TARGET, D_C, D_D);
+                                    targetCoordinate, RADIUS_FROM_TARGET, D_C, D_D);
 
         //BC Must be perpendicular to AB
         AB = createVector(S_A, S_B);
