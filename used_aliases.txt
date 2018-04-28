@@ -1,0 +1,27 @@
+source /opt/ros/indigo/setup.bash
+source ~/Documents/catkin_ws/devel/setup.bash
+
+alias 15Hz_mode='rosrun ardrone_autonomy ardrone_driver _navdata_demo:=1 _realtime_navdata:=True _looprate:=15 _enable_legacy_navdata:=False'
+alias 200Hz_mode='rosrun ardrone_autonomy ardrone_driver _navdata_demo:=0 _realtime_navdata:=True _looprate:=200 _enable_legacy_navdata:=False'
+alias drone_reset='rostopic pub /ardrone/reset std_msgs/Empty "{}"'
+
+alias takeoff='rostopic pub /ControlCenter/external_intervention DroneNavigationPackage/Intervention "EMERGENCY_EXIT_HAPPENED: false
+READY_TO_START: true
+LAND_DRONE: false" '
+
+alias land='rostopic pub /ControlCenter/external_intervention DroneNavigationPackage/Intervention "EMERGENCY_EXIT_HAPPENED: false
+READY_TO_START: false
+LAND_DRONE: true" '
+
+alias emergency_landing='rostopic pub /ControlCenter/external_intervention DroneNavigationPackage/Intervention "EMERGENCY_EXIT_HAPPENED: true
+READY_TO_START: false
+LAND_DRONE: false" '
+
+alias calibrate='rostopic pub /ControlCenter/drone_operations std_msgs/Int8 "data: 1" '
+alias calculate='rostopic pub /ControlCenter/drone_operations std_msgs/Int8 "data: 2" '
+alias travel='rostopic pub /ControlCenter/drone_operations std_msgs/Int8 "data: 3" '
+
+function generate_tree(){
+	rosrun tf view_frames 
+	evince frames.pdf
+}
