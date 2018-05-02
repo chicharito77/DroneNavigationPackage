@@ -2,7 +2,7 @@
 <package>
 
   <name>DroneNavigationPackage</name>
-  <version>2.1.0</version>
+  <version>2.2.0</version>
   <description>The DroneNavigationPackage package</description>
 
   <maintainer email="nemeth.istvan1892@gmail.com">HLAR8M</maintainer>
