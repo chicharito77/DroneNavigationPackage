@@ -219,6 +219,10 @@ int main(int argc, char **argv)
 	system("rosservice call /ardrone/flattrim");
 	ROS_INFO("ControlCenter started ...");		
 	initializeMovementMessages();
+
+	destinationCoordinate.x = 1.03;
+	destinationCoordinate.y = 3.37;
+	destinationCoordinate.z = 1.0;
 	
 	running = false;
 	currentState = START;
